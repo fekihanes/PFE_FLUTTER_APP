@@ -28,7 +28,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordConfirmationController =
       TextEditingController();
 
-  void _handleAuth() async {
+  Future<void> _handleAuth() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
@@ -54,7 +54,17 @@ class _LoginPageState extends State<LoginPage> {
 
       if (result['success'] && mounted) {
         if (_isConnexionSelected) {
-          _handleSuccessfulAuth(result);
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String role = prefs.getString('role')??'' ;
+    if(role=='admin'){
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomePageAdmin()));
+    }else if(role=='manager'){
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomePageManager()));
+    }else if(role=='user'){
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomePageUser()));
+    }else{
+          _showSuccessSnackbar("bar nyyyk omk");
+    }
         } else {
           _showSuccessSnackbar(AppLocalizations.of(context)!.unverified_email);
         }
@@ -68,22 +78,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _handleSuccessfulAuth(Map<String, dynamic> result) {
-    final role = result['role'] ?? 'user';
-
-    Navigator.pushReplacement(context, MaterialPageRoute(
-      builder: (context) {
-        switch (role) {
-          case 'admin':
-            return const HomePageAdmin();
-          case 'manager':
-            return const HomePageManager();
-          default:
-            return const HomePageUser();
-        }
-      },
-    ));
-  }
 
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -114,7 +108,7 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
 
       final prefs = await SharedPreferences.getInstance();
-      final role = prefs.getString('role') ?? 'user';
+      final role = prefs.getString('role') ?? '';
 
       Navigator.pushReplacement(context, MaterialPageRoute(
         builder: (context) {
@@ -123,8 +117,10 @@ class _LoginPageState extends State<LoginPage> {
               return const HomePageAdmin();
             case 'manager':
               return const HomePageManager();
-            default:
+            case 'user':
               return const HomePageUser();
+            default:
+              return const LoginPage();
           }
         },
       ));

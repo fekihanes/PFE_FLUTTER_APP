@@ -69,8 +69,7 @@ class AuthService {
       await prefs.setString('phone', userData['phone'] ?? '');
       await prefs.setString('email', userData['email'] ?? '');
       await prefs.setString('name', userData['name'] ?? '');
-      await prefs.setString('role', userData['role'] ?? 'user');
-
+      await prefs.setString('role', userData['role'] ?? '');
       return {'success': true, 'data': userData};
     } catch (e) {
       return {'success': false, 'error': e.toString()};
