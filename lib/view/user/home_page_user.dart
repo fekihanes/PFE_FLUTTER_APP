@@ -16,7 +16,7 @@ class _HomePageUserState extends State<HomePageUser> {
     // Redirection vers la page de connexion après déconnexion
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => LoginPage()),
+      MaterialPageRoute(builder: (context) => const LoginPage()),
     );
   }
 

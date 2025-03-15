@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_application/classes/PaginatedUserResponse.dart';
+import 'package:flutter_application/classes/ApiConfig.dart';
+import 'package:flutter_application/classes/Paginated/PaginatedUserResponse.dart';
+import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AdminService {
-  static const String baseUrl = 'http://127.0.0.1:8000/api/admin/';
+   String baseUrl = Apiconfig().AdminbaseUrl;
   final http.Client _client = http.Client();
 
   void _showErrorSnackbar(BuildContext context, String message) {
@@ -17,7 +19,8 @@ class AdminService {
       ),
     );
   }
-  void _showSuccessSnackbar(BuildContext context,String message) {
+
+  void _showSuccessSnackbar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -25,6 +28,7 @@ class AdminService {
       ),
     );
   }
+
   Future<PaginatedUserResponse?> searchUsers(
     BuildContext context, {
     required int page,
@@ -32,7 +36,7 @@ class AdminService {
     int? enable,
     String? role,
   }) async {
-    int test200=0;
+    int test200 = 0;
     try {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('auth_token');
@@ -67,14 +71,33 @@ class AdminService {
       );
 
       if (response.statusCode == 200) {
-        test200=1;
+        test200 = 1;
         final jsonResponse = jsonDecode(response.body);
         PaginatedUserResponse paginatedUsers =
             PaginatedUserResponse.fromJson(jsonResponse);
         return paginatedUsers;
+      } else if (response.statusCode == 405) {
+        bool refreshed = await AuthService().refreshToken();
+        if (refreshed) {
+          return searchUsers(context, page: page, query: query);
+        } else {
+          _showErrorSnackbar(
+              context, AppLocalizations.of(context)!.sessionExpired);
+          return null;
+        }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(response.body);
         String message = jsonResponse['message'] ?? 'Unauthenticated.';
+        if(message == 'Unauthenticated.') {
+            bool refreshed = await AuthService().refreshToken();
+        if (refreshed) {
+          return searchUsers(context, page: page, query: query);
+        } else {
+          _showErrorSnackbar(
+              context, AppLocalizations.of(context)!.sessionExpired);
+          return null;
+        }
+        }
         _showErrorSnackbar(context, message);
         return null;
       } else {
@@ -83,9 +106,8 @@ class AdminService {
         return null;
       }
     } catch (e) {
-      if (test200==0){
-        
-      _showErrorSnackbar(context, AppLocalizations.of(context)!.networkError);
+      if (test200 == 0) {
+        _showErrorSnackbar(context, AppLocalizations.of(context)!.networkError);
       }
       return null;
     }
@@ -112,9 +134,28 @@ class AdminService {
 
       if (response.statusCode == 200) {
         _showSuccessSnackbar(context, 'User status updated successfully.');
+      } else if (response.statusCode == 405) {
+        bool refreshed = await AuthService().refreshToken();
+        if (refreshed) {
+          return updateUserStatus(userId, enable, context);
+        } else {
+          _showErrorSnackbar(
+              context, AppLocalizations.of(context)!.sessionExpired);
+          return;
+        }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(response.body);
         String message = jsonResponse['message'] ?? 'Unauthenticated.';
+        if(message == 'Unauthenticated.') {
+           bool refreshed = await AuthService().refreshToken();
+        if (refreshed) {
+          return updateUserStatus(userId, enable, context);
+        } else {
+          _showErrorSnackbar(
+              context, AppLocalizations.of(context)!.sessionExpired);
+          return;
+        }
+        }
         _showErrorSnackbar(context, message);
       } else {
         _showErrorSnackbar(
@@ -124,6 +165,7 @@ class AdminService {
       _showErrorSnackbar(context, AppLocalizations.of(context)!.networkError);
     }
   }
+
   Future<void> updateUserRole(int userId, String role, context) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -138,17 +180,35 @@ class AdminService {
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-
+          'Content-Type': 'application/json',
         },
         body: jsonEncode({'role': role}),
       );
 
       if (response.statusCode == 200) {
         _showSuccessSnackbar(context, 'User role updated successfully.');
+      } else if (response.statusCode == 405) {
+        bool refreshed = await AuthService().refreshToken();
+        if (refreshed) {
+          return updateUserRole(userId, role, context);
+        } else {
+          _showErrorSnackbar(
+              context, AppLocalizations.of(context)!.sessionExpired);
+          return;
+        }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(response.body);
         String message = jsonResponse['message'] ?? 'Unauthenticated.';
+        if (message == 'Unauthenticated.') {
+          bool refreshed = await AuthService().refreshToken();
+        if (refreshed) {
+          return updateUserRole(userId, role, context);
+        } else {
+          _showErrorSnackbar(
+              context, AppLocalizations.of(context)!.sessionExpired);
+          return;
+        }
+        }
         _showErrorSnackbar(context, message);
       } else {
         _showErrorSnackbar(
@@ -158,7 +218,8 @@ class AdminService {
       _showErrorSnackbar(context, AppLocalizations.of(context)!.networkError);
     }
   }
-  Future<void> deleteUser(int userId,context) async {
+
+  Future<void> deleteUser(int userId, context) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('auth_token');
@@ -173,14 +234,32 @@ class AdminService {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
-
       );
 
       if (response.statusCode == 200) {
         _showSuccessSnackbar(context, 'User deleted successfully.');
+      } else if (response.statusCode == 405) {
+        bool refreshed = await AuthService().refreshToken();
+        if (refreshed) {
+          return deleteUser(userId, context);
+        } else {
+          _showErrorSnackbar(
+              context, AppLocalizations.of(context)!.sessionExpired);
+          return;
+        }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(response.body);
         String message = jsonResponse['message'] ?? 'Unauthenticated.';
+        if(message == 'Unauthenticated.') {
+           bool refreshed = await AuthService().refreshToken();
+        if (refreshed) {
+          return deleteUser(userId, context);
+        } else {
+          _showErrorSnackbar(
+              context, AppLocalizations.of(context)!.sessionExpired);
+          return;
+        }
+        }
         _showErrorSnackbar(context, message);
       } else {
         _showErrorSnackbar(
@@ -190,5 +269,4 @@ class AdminService {
       _showErrorSnackbar(context, AppLocalizations.of(context)!.networkError);
     }
   }
-
 }

@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/traductions.dart';
 import 'package:flutter_application/classes/user_class.dart';
-import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
 import 'package:flutter_application/custom_widgets/RoleWidget.dart';
 import 'package:flutter_application/services/manager/manager_service.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedUserResponse.dart';
-import 'package:flutter_application/view/manager/Add_Employee_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-class HomePageManager extends StatefulWidget {
-  const HomePageManager({super.key});
+
+class AddEmployeePage extends StatefulWidget {
+  const AddEmployeePage({super.key});
 
   @override
-  State<HomePageManager> createState() => _HomePageManagerState();
+  State<AddEmployeePage> createState() => _AddEmployeePageState();
 }
 
-class _HomePageManagerState extends State<HomePageManager> {
+class _AddEmployeePageState extends State<AddEmployeePage> {
   List<UserClass> users = [];
   int currentPage = 1;
   int lastPage = 1;
@@ -32,7 +31,7 @@ class _HomePageManagerState extends State<HomePageManager> {
       isLoading = true;
     });
 
-    PaginatedUserResponse? response = await ManagerService().searchemployees(
+    PaginatedUserResponse? response = await ManagerService().searchUsers(
       context,
       query: _searchController.text.trim(),
       page: page,
@@ -64,13 +63,13 @@ class _HomePageManagerState extends State<HomePageManager> {
   }
 
 
-
   @override
   void initState() {
-    super.initState();    
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    super.initState();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
       ManagerService().havebakery(context);
     });
+    
     fetchUsers();
   }
 
@@ -86,19 +85,18 @@ class _HomePageManagerState extends State<HomePageManager> {
       backgroundColor: const Color(0xFFE5E7EB),
       appBar: AppBar(
         title: Text(
-          AppLocalizations.of(context)!.employeeManagement,
+          AppLocalizations.of(context)!.adding_employees,
           style: const TextStyle(
               color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: Colors.white,
       ),
-      drawer: const CustomDrawerManager(),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildContEmployee(),
+            _buildContUsers(),
             const SizedBox(height: 20),
             _buildInput(),
             const SizedBox(height: 20),
@@ -110,7 +108,7 @@ class _HomePageManagerState extends State<HomePageManager> {
     );
   }
 
-  Widget _buildContEmployee() {
+  Widget _buildContUsers() {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -128,7 +126,7 @@ class _HomePageManagerState extends State<HomePageManager> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            AppLocalizations.of(context)!.totalEmployees,
+            AppLocalizations.of(context)!.totalUsers,
             style: const TextStyle(
               color: Colors.grey,
               fontSize: 16,
@@ -235,7 +233,8 @@ class _HomePageManagerState extends State<HomePageManager> {
                 ),
                 const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.arrow_forward_ios, color: Colors.black),
+                  icon:
+                      const Icon(Icons.arrow_forward_ios, color: Colors.black),
                   onPressed: () {
                     showDialog(
                       context: context,
@@ -257,8 +256,8 @@ class _HomePageManagerState extends State<HomePageManager> {
                                 children: [
                                   Text(
                                     AppLocalizations.of(context)!.userName,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
+                                    style:
+                                        const TextStyle(fontWeight: FontWeight.bold),
                                   ),
                                   Text(
                                     user.name, // Accessing name directly
@@ -313,7 +312,8 @@ class _HomePageManagerState extends State<HomePageManager> {
                                               Text(
                                                 Traductions().traductionrole(context, 'patissier'), // Use translation
                                                 style: TextStyle(
-                                                  color: selectedRole == 'patissier'
+                                                  color: selectedRole ==
+                                                          'patissier'
                                                       ? Colors.white
                                                       : Colors.blueAccent,
                                                 ),
@@ -346,14 +346,16 @@ class _HomePageManagerState extends State<HomePageManager> {
                                                 MainAxisAlignment.center,
                                             children: [
                                               Icon(FontAwesomeIcons.breadSlice,
-                                                  color: selectedRole == 'boulanger'
+                                                  color: selectedRole ==
+                                                          'boulanger'
                                                       ? Colors.white
                                                       : const Color(0xFF795548)),
                                               const SizedBox(width: 10),
                                               Text(
                                                 Traductions().traductionrole(context, 'boulanger'), // Use translation
                                                 style: TextStyle(
-                                                  color: selectedRole == 'boulanger'
+                                                  color: selectedRole ==
+                                                          'boulanger'
                                                       ? Colors.white
                                                       : const Color(0xFF795548),
                                                 ),
@@ -395,9 +397,10 @@ class _HomePageManagerState extends State<HomePageManager> {
                                               Text(
                                                 Traductions().traductionrole(context, 'caissier'), // Use translation
                                                 style: TextStyle(
-                                                  color: selectedRole == 'caissier'
-                                                      ? Colors.white
-                                                      : Colors.deepOrange,
+                                                  color:
+                                                      selectedRole == 'caissier'
+                                                          ? Colors.white
+                                                          : Colors.deepOrange,
                                                 ),
                                               ),
                                             ],
@@ -436,9 +439,10 @@ class _HomePageManagerState extends State<HomePageManager> {
                                               Text(
                                                 Traductions().traductionrole(context, 'livreur'), // Use translation
                                                 style: TextStyle(
-                                                  color: selectedRole == 'livreur'
-                                                      ? Colors.white
-                                                      : Colors.purple,
+                                                  color:
+                                                      selectedRole == 'livreur'
+                                                          ? Colors.white
+                                                          : Colors.purple,
                                                 ),
                                               ),
                                             ],
@@ -637,34 +641,6 @@ class _HomePageManagerState extends State<HomePageManager> {
       ),
     );
     pageLinks.add(const Spacer());
-    pageLinks.add(IconButton(
-      icon: Container(
-        width: 50, // Set the width of the container
-        height: 50, // Set the height of the container
-        decoration: BoxDecoration(
-          color: const Color(0xFFFB8C00), // Background color
-          borderRadius: BorderRadius.circular(8), // Rounded border
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black
-                  .withOpacity(0.5), // Shadow color (adjust opacity)
-              spreadRadius: 2, // Spread of the shadow
-              blurRadius: 5, // Blur radius
-              offset: const Offset(0, 3), // Shadow position
-            ),
-          ],
-        ),
-        child: const Icon(
-          Icons.add,
-          color: Colors.white,
-        ),
-      ),
-      onPressed: () async {
-        await Navigator.of(context)
-            .push(MaterialPageRoute(builder: (context) => AddEmployeePage()));
-        fetchUsers();
-      },
-    ));
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Row(
@@ -680,4 +656,5 @@ class _HomePageManagerState extends State<HomePageManager> {
       ),
     );
   }
+
 }

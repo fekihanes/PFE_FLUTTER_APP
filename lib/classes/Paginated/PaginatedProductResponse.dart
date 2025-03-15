@@ -1,9 +1,9 @@
-import 'package:flutter_application/classes/PageLink.dart';
-import 'package:flutter_application/classes/user_class.dart';
+import 'package:flutter_application/classes/Paginated/PageLink.dart';
+import 'package:flutter_application/classes/Product.dart';
 
-class PaginatedUserResponse {
+class PaginatedProductResponse {
   int currentPage;
-  List<UserClass> data;
+  List<Product> data;
   String? firstPageUrl;
   int from;
   int lastPage;
@@ -16,8 +16,7 @@ class PaginatedUserResponse {
   int to;
   int total;
 
-
-  PaginatedUserResponse({
+  PaginatedProductResponse({
     required this.currentPage,
     required this.data,
     this.firstPageUrl,
@@ -34,29 +33,29 @@ class PaginatedUserResponse {
   });
 
   // From JSON
-  factory PaginatedUserResponse.fromJson(Map<String, dynamic> json) {
-    var list = json['data'] as List;
-    List<UserClass> users =
-        list.map((userJson) => UserClass.fromJson(userJson)).toList();
+  factory PaginatedProductResponse.fromJson(Map<String, dynamic> json) {
+    var list = json['data'] as List? ?? [];
+    List<Product> products =
+        list.map((productJson) => Product.fromJson(productJson)).toList();
 
-    var linkList = json['links'] as List;
+    var linkList = json['links'] as List? ?? [];
     List<PageLink> pageLinks =
         linkList.map((linkJson) => PageLink.fromJson(linkJson)).toList();
 
-    return PaginatedUserResponse(
-      currentPage: json['current_page'],
-      data: users,
+    return PaginatedProductResponse(
+      currentPage: json['current_page'] ?? 0,
+      data: products,
       firstPageUrl: json['first_page_url'],
-      from: json['from'],
-      lastPage: json['last_page'],
+      from: json['from'] ?? 0,
+      lastPage: json['last_page'] ?? 0,
       lastPageUrl: json['last_page_url'],
       links: pageLinks,
       nextPageUrl: json['next_page_url'],
-      path: json['path'],
-      perPage: json['per_page'],
+      path: json['path'] ?? '',
+      perPage: json['per_page'] ?? 0,
       prevPageUrl: json['prev_page_url'],
-      to: json['to'],
-      total: json['total'],
+      to: json['to'] ?? 0,
+      total: json['total'] ?? 0,
     );
   }
 
@@ -64,7 +63,7 @@ class PaginatedUserResponse {
   Map<String, dynamic> toJson() {
     return {
       'current_page': currentPage,
-      'data': data.map((user) => user.toJson()).toList(),
+      'data': data.map((product) => product.toJson()).toList(),
       'first_page_url': firstPageUrl,
       'from': from,
       'last_page': lastPage,
@@ -79,3 +78,5 @@ class PaginatedUserResponse {
     };
   }
 }
+
+

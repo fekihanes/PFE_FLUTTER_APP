@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application/classes/PaginatedUserResponse.dart';
 import 'package:flutter_application/classes/user_class.dart';
+import 'package:flutter_application/custom_widgets/RoleWidget.dart';
 import 'package:flutter_application/services/admin/admin_service.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/view/Login_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class HomePageAdmin extends StatefulWidget {
   const HomePageAdmin({super.key});
@@ -41,7 +42,7 @@ class _HomePageAdminState extends State<HomePageAdmin> {
 
   Future<void> fetchUsers({int page = 1}) async {
     setState(() => isLoading = true);
-    
+
     final l10n = AppLocalizations.of(context)!;
     final response = await AdminService().searchUsers(
       context,
@@ -92,7 +93,7 @@ class _HomePageAdminState extends State<HomePageAdmin> {
         title: Text(
           AppLocalizations.of(context)!.userManagement,
           style: const TextStyle(
-              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
+              color: Colors.black, fontWeight: FontWeight.bold, fontSize:20),
         ),
         actions: [
           IconButton(
@@ -149,38 +150,6 @@ class _HomePageAdminState extends State<HomePageAdmin> {
 
     return Column(
       children: users.map((user) {
-        Color roleColor;
-        Color backGroundRoleColor;
-        switch (user.role) {
-          case 'caissier':
-            roleColor = const Color(0xFFFB8C00);
-            backGroundRoleColor = Colors.orange[100]!;
-            break;
-          case 'livreur':
-            roleColor = const Color(0xFF795548);
-            backGroundRoleColor = Colors.brown[100]!;
-            break;
-          case 'patissier':
-            roleColor = const Color(0xFF2196F3);
-            backGroundRoleColor = Colors.blue[100]!;
-            break;
-          case 'boulanger':
-            roleColor = const Color(0xFF4CAF50);
-            backGroundRoleColor = Colors.green[100]!;
-            break;
-          case 'admin':
-            roleColor = Colors.red;
-            backGroundRoleColor = Colors.red[100]!;
-            break;
-          case 'manager':
-            roleColor = Colors.blue;
-            backGroundRoleColor = Colors.blue[100]!;
-            break;
-          default:
-            roleColor = Colors.green;
-            backGroundRoleColor = Colors.green[100]!;
-        }
-
         return Container(
           margin: const EdgeInsets.only(bottom: 10.0),
           padding: const EdgeInsets.all(16.0),
@@ -227,19 +196,7 @@ class _HomePageAdminState extends State<HomePageAdmin> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: backGroundRoleColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        user.role, // Accessing role directly
-                        style: TextStyle(
-                            color: roleColor, fontWeight: FontWeight.bold),
-                      ),
-                    ),
+                    RoleWidget(role: user.role),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -253,7 +210,7 @@ class _HomePageAdminState extends State<HomePageAdmin> {
                       child: Text(
                         user.enable == 1
                             ? AppLocalizations.of(context)!.enabled
-                            : 'Disabled', // Accessing role directly
+                            : AppLocalizations.of(context)!.disabled,
                         style: TextStyle(
                             color: user.enable == 1 ? Colors.green : Colors.red,
                             fontWeight: FontWeight.bold),
@@ -339,8 +296,8 @@ class _HomePageAdminState extends State<HomePageAdmin> {
                                                     selectedRole == 'manager'
                                                         ? Colors.blueAccent
                                                         : Colors.blue[100],
-                                                minimumSize:
-                                                    const Size(double.infinity, 50),
+                                                minimumSize: const Size(
+                                                    double.infinity, 50),
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius:
                                                       BorderRadius.circular(
@@ -351,17 +308,18 @@ class _HomePageAdminState extends State<HomePageAdmin> {
                                                 mainAxisAlignment:
                                                     MainAxisAlignment.center,
                                                 children: [
-                                                  Icon(
-                                                    Icons.account_circle,
-                                                    color: selectedRole == 'manager'
-                                                        ? Colors.white
-                                                        : Colors.blueAccent,
-                                                  ),
+                                                  Icon(FontAwesomeIcons.userTie,
+                                                      color: selectedRole ==
+                                                              'manager'
+                                                          ? Colors.white
+                                                          : Colors.blueAccent,
+                                                      ),
                                                   const SizedBox(width: 10),
                                                   Text(
                                                     'manager',
                                                     style: TextStyle(
-                                                      color: selectedRole == 'manager'
+                                                      color: selectedRole ==
+                                                              'manager'
                                                           ? Colors.white
                                                           : Colors.blueAccent,
                                                     ),
@@ -381,8 +339,8 @@ class _HomePageAdminState extends State<HomePageAdmin> {
                                                     selectedRole == 'admin'
                                                         ? Colors.deepOrange
                                                         : Colors.orange[100],
-                                                minimumSize:
-                                                    const Size(double.infinity, 50),
+                                                minimumSize: const Size(
+                                                    double.infinity, 50),
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius:
                                                       BorderRadius.circular(
@@ -393,17 +351,18 @@ class _HomePageAdminState extends State<HomePageAdmin> {
                                                 mainAxisAlignment:
                                                     MainAxisAlignment.center,
                                                 children: [
-                                                  Icon(
-                                                    Icons.shield,
-                                                    color: selectedRole == 'admin'
-                                                        ? Colors.white
-                                                        : Colors.deepOrange,
-                                                  ),
+                                                  Icon(Icons.admin_panel_settings,
+                                                      color: selectedRole == 'admin'
+                                                            ? Colors.white
+                                                            : Colors.deepOrange,
+                                                      ),
+                                               
                                                   const SizedBox(width: 10),
                                                   Text(
                                                     'admin',
                                                     style: TextStyle(
-                                                      color: selectedRole == 'admin'
+                                                      color: selectedRole ==
+                                                              'admin'
                                                           ? Colors.white
                                                           : Colors.deepOrange,
                                                     ),
@@ -423,8 +382,8 @@ class _HomePageAdminState extends State<HomePageAdmin> {
                                                     selectedRole == 'user'
                                                         ? Colors.green
                                                         : Colors.green[100],
-                                                minimumSize:
-                                                    const Size(double.infinity, 50),
+                                                minimumSize: const Size(
+                                                    double.infinity, 50),
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius:
                                                       BorderRadius.circular(
@@ -435,19 +394,21 @@ class _HomePageAdminState extends State<HomePageAdmin> {
                                                 mainAxisAlignment:
                                                     MainAxisAlignment.center,
                                                 children: [
-                                                  Icon(
-                                                    Icons.person,
-                                                    color: selectedRole == 'user'
-                                                        ? Colors.white
-                                                        : Colors.green,
-                                                  ),
+                                                  Icon(Icons.person,
+                                                      color:
+                                                        selectedRole == 'user'
+                                                            ? Colors.white
+                                                            : Colors.green,
+                                                      ),
+                                                 
                                                   const SizedBox(width: 10),
                                                   Text(
                                                     'user',
                                                     style: TextStyle(
-                                                      color: selectedRole == 'user'
-                                                          ? Colors.white
-                                                          : Colors.green,
+                                                      color:
+                                                          selectedRole == 'user'
+                                                              ? Colors.white
+                                                              : Colors.green,
                                                     ),
                                                   ),
                                                 ],
@@ -465,7 +426,8 @@ class _HomePageAdminState extends State<HomePageAdmin> {
                                       },
                                       child: Text(
                                         AppLocalizations.of(context)!.cancel,
-                                        style: const TextStyle(color: Colors.black),
+                                        style: const TextStyle(
+                                            color: Colors.black),
                                       ),
                                     ),
                                     ElevatedButton(
@@ -491,7 +453,8 @@ class _HomePageAdminState extends State<HomePageAdmin> {
                                       ),
                                       child: Text(
                                         AppLocalizations.of(context)!.save,
-                                        style: const TextStyle(color: Colors.white),
+                                        style: const TextStyle(
+                                            color: Colors.white),
                                       ),
                                     ),
                                   ],
@@ -525,7 +488,8 @@ class _HomePageAdminState extends State<HomePageAdmin> {
                               ),
                               content: Text(
                                 '${AppLocalizations.of(context)!.deleteConfirmation} ${user.name} ?',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                                 textAlign: TextAlign.center,
                               ),
                               actions: [
@@ -632,7 +596,12 @@ class _HomePageAdminState extends State<HomePageAdmin> {
                           page:
                               currentPage); // Trigger search when role changes
                     },
-                    items: [AppLocalizations.of(context)!.allRoles, 'admin', 'manager', 'user']
+                    items: [
+                      AppLocalizations.of(context)!.allRoles,
+                      'admin',
+                      'manager',
+                      'user'
+                    ]
                         .map((role) => DropdownMenuItem(
                               value: role,
                               child: Text(role),
@@ -656,9 +625,14 @@ class _HomePageAdminState extends State<HomePageAdmin> {
                         selectedStatus = value!; // Update the selected status
                       });
                       fetchUsers(
-                          page: currentPage); // Trigger search when status changes
+                          page:
+                              currentPage); // Trigger search when status changes
                     },
-                    items: [AppLocalizations.of(context)!.allStates, AppLocalizations.of(context)!.enabled, 'Disabled']
+                    items: [
+                      AppLocalizations.of(context)!.allStates,
+                      AppLocalizations.of(context)!.enabled,
+                      'Disabled'
+                    ]
                         .map((status) => DropdownMenuItem(
                               value: status,
                               child: Text(status),
@@ -708,46 +682,46 @@ class _HomePageAdminState extends State<HomePageAdmin> {
                           currentPage); // Charge les utilisateurs pour la page précédente
                 }
               : null, // Si prevPageUrl est null, on ne permet pas l'action
-          child: Icon(
+          child: const Icon(
             Icons.arrow_left,
             color: Colors.black,
           ),
         ),
       ),
     );
-
+    
     // Affichage des numéros de page
-    for (int i = 1; i <= lastPage; i++) {
-      pageLinks.add(
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              currentPage = i;
-            });
-            fetchUsers(
-                page:
-                    currentPage); // Charge les utilisateurs pour la page correspondante
-          },
-          child: Container(
-            padding: const EdgeInsets.all(8.0),
-            margin: const EdgeInsets.symmetric(horizontal: 4.0),
-            decoration: BoxDecoration(
-              color: (currentPage == i) ? arrowColor : Colors.grey[300],
-              borderRadius: BorderRadius.circular(5.0),
-            ),
-            child: Text(
-              '$i',
-              style: TextStyle(
-                color: (currentPage == i) ? Colors.white : Colors.black,
-                fontWeight: FontWeight.bold,
-              ),
+for (int i = 1; i <= lastPage; i++) {
+  // Check if i is within the range of currentPage - 3 to currentPage + 3
+  if (i >= (currentPage - 3).clamp(1, lastPage) && i <= (currentPage + 3).clamp(1, lastPage)) {
+    pageLinks.add(
+      GestureDetector(
+        onTap: () {
+          setState(() {
+            currentPage = i;
+          });
+          fetchUsers(page: currentPage); // Charge les utilisateurs pour la page correspondante
+        },
+        child: Container(
+          padding: const EdgeInsets.all(8.0),
+          margin: const EdgeInsets.symmetric(horizontal: 4.0),
+          decoration: BoxDecoration(
+            color: (currentPage == i) ? arrowColor : Colors.grey[300],
+            borderRadius: BorderRadius.circular(5.0),
+          ),
+          child: Text(
+            '$i',
+            style: TextStyle(
+              color: (currentPage == i) ? Colors.white : Colors.black,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),
-      );
-    }
-
-    // Affichage de la flèche "Suivant"
+      ),
+    );
+  }
+}
+// Affichage de la flèche "Suivant"
     pageLinks.add(
       Container(
         padding: const EdgeInsets.all(8.0),
@@ -767,7 +741,7 @@ class _HomePageAdminState extends State<HomePageAdmin> {
                           currentPage); // Charge les utilisateurs pour la page suivante
                 }
               : null, // Si nextPageUrl est null, on ne permet pas l'action
-          child: Icon(
+          child: const Icon(
             Icons.arrow_right,
             color: Colors.black,
           ),

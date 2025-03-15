@@ -1,13 +1,15 @@
 import 'dart:convert';
+import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://127.0.0.1:8000/api/';
+  final String baseUrl = Apiconfig().baseUrl;
   final http.Client _client = http.Client();
 
-  Future<Map<String, dynamic>> login(String email, String password, context) async {
+  Future<Map<String, dynamic>> login(
+      String email, String password, context) async {
     try {
       final requestBody = json.encode({'email': email, 'password': password});
 
@@ -21,7 +23,8 @@ class AuthService {
 
       if (loginResponse.statusCode == 422) {
         final responseData = json.decode(loginResponse.body);
-        final message = responseData['message'] ?? AppLocalizations.of(context)!.validation_error;
+        final message = responseData['message'] ??
+            AppLocalizations.of(context)!.validation_error;
         return {'success': false, 'error': message};
       } else if (loginResponse.statusCode != 201) {
         throw Exception(AppLocalizations.of(context)!.login_failed);
@@ -30,7 +33,9 @@ class AuthService {
       final loginData = json.decode(loginResponse.body);
       final token = loginData['token'] as String?;
 
-      if (token == null) throw Exception(AppLocalizations.of(context)!.token_missing);
+      if (token == null) {
+        throw Exception(AppLocalizations.of(context)!.token_missing);
+      }
 
       final userResponse = await _client.get(
         Uri.parse('${baseUrl}user'),
@@ -46,8 +51,8 @@ class AuthService {
 
       final userData = json.decode(userResponse.body);
       if (userData['email_verified_at'] == null) {
-        int res_resendVerification = await resendVerification(token);
-        if (res_resendVerification == 1) {
+        int resResendverification = await resendVerification(token);
+        if (resResendverification == 1) {
           print(AppLocalizations.of(context)!.verification_email_resent);
         }
         try {
@@ -59,18 +64,25 @@ class AuthService {
             },
           );
         } catch (e) {
-          return {'success': false, 'error': AppLocalizations.of(context)!.logout_failed};
+          return {
+            'success': false,
+            'error': AppLocalizations.of(context)!.logout_failed
+          };
         }
         throw Exception(AppLocalizations.of(context)!.unverified_email);
       }
 
       await _saveToken(token);
       final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('refresh_token', loginData['refresh_token'] ?? '');
+      await prefs.setString('user_picture', userData['user_picture'] ?? '');
       await prefs.setString('phone', userData['phone'] ?? '');
       await prefs.setString('email', userData['email'] ?? '');
       await prefs.setString('name', userData['name'] ?? '');
       await prefs.setString('role', userData['role'] ?? '');
       await prefs.setString('bakery_id', userData['bakery_id'] ?? '');
+      await prefs.setString(
+          'my_bakery', userData['bakery']?['id']?.toString() ?? '');
       return {'success': true, 'data': userData};
     } catch (e) {
       return {'success': false, 'error': e.toString()};
@@ -109,9 +121,11 @@ class AuthService {
       if (response.statusCode == 201) {
         return {'success': true, 'data': responseData};
       } else if (response.statusCode == 422) {
-        throw Exception(responseData['message'] ?? AppLocalizations.of(context)!.validation_error);
+        throw Exception(responseData['message'] ??
+            AppLocalizations.of(context)!.validation_error);
       } else {
-        throw Exception(responseData['message'] ?? AppLocalizations.of(context)!.login_failed);
+        throw Exception(responseData['message'] ??
+            AppLocalizations.of(context)!.login_failed);
       }
     } catch (e) {
       return {'success': false, 'error': e.toString()};
@@ -141,10 +155,26 @@ class AuthService {
 
       if (response.statusCode == 204) {
         final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('refresh_token');
         await prefs.remove('auth_token');
         await prefs.remove('email');
         await prefs.remove('name');
         await prefs.remove('role');
+        await prefs.remove('bakery_id');
+        await prefs.remove('my_bakery');
+        await prefs.remove('phone');
+        await prefs.remove('user_picture');
+      } else if (response.statusCode == 401) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('refresh_token');
+        await prefs.remove('auth_token');
+        await prefs.remove('email');
+        await prefs.remove('name');
+        await prefs.remove('role');
+        await prefs.remove('bakery_id');
+        await prefs.remove('my_bakery');
+        await prefs.remove('phone');
+        await prefs.remove('user_picture');
       } else {
         throw Exception(AppLocalizations.of(context)!.logout_failed);
       }
@@ -167,7 +197,8 @@ class AuthService {
       final responseData = json.decode(response.body);
 
       if (response.statusCode == 422) {
-        final message = responseData['message'] ?? AppLocalizations.of(context)!.validation_error;
+        final message = responseData['message'] ??
+            AppLocalizations.of(context)!.validation_error;
         return {'success': false, 'error': message};
       }
 
@@ -184,7 +215,7 @@ class AuthService {
     }
   }
 
-  Future <int> resendVerification(String token) async {
+  Future<int> resendVerification(String token) async {
     try {
       final response = await _client.post(
         Uri.parse('${baseUrl}email/verification-notification'),
@@ -201,6 +232,120 @@ class AuthService {
     } catch (e) {
       return -1;
     }
+  }
+
+  Future<bool> refreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? refreshToken = prefs.getString('refresh_token');
+
+    if (refreshToken == null || refreshToken.isEmpty) {
+      print("Aucun refresh token trouvé.");
+      return false;
+    }
+
+    try {
+      final response = await _client.post(
+        Uri.parse('${baseUrl}refresh-token'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'refresh_token': refreshToken}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        String newToken = data['token'];
+        String newRefreshToken = data['refresh_token'];
+
+        await prefs.setString('auth_token', newToken);
+        await prefs.setString('refresh_token', newRefreshToken);
+
+        print("Token rafraîchi avec succès !");
+        return true;
+      } else {
+        print("Échec du rafraîchissement du token : ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("Erreur lors du rafraîchissement du token : $e");
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> getUserProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('auth_token');
+
+    if (token == null) {
+      print("Aucun token trouvé, tentative de rafraîchissement...");
+      bool refreshed = await refreshToken();
+      if (!refreshed) {
+        return {
+          'success': false,
+          'error': 'Session expirée, veuillez vous reconnecter.'
+        };
+      }
+      token = prefs.getString('auth_token'); // Récupérer le nouveau token
+    }
+
+    try {
+      final response = await _client.get(
+        Uri.parse('${baseUrl}user'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final prefs = await SharedPreferences.getInstance();
+        final userData = json.decode(response.body);
+        await prefs.setString('refresh_token', userData['refresh_token']);
+        await prefs.setString('user_picture', userData['user_picture']);
+        await prefs.setString('phone', userData['phone']);
+        await prefs.setString('email', userData['email'] ?? '');
+        await prefs.setString('name', userData['name'] ?? '');
+        await prefs.setString('role', userData['role'] ?? '');
+        await prefs.setString('bakery_id', userData['bakery_id'] ?? '');
+        await prefs.setString(
+            'my_bakery', userData['bakery']?['id']?.toString() ?? '');
+        return {'success': true, 'data': userData};
+      } else if (response.statusCode == 401) {
+        final jsonResponse = jsonDecode(response.body);
+        String message = jsonResponse['message'] ?? 'Unauthenticated.';
+        if (message == 'Unauthenticated.') {
+          bool refreshed = await AuthService().refreshToken();
+          if (!refreshed) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove('refresh_token');
+            await prefs.remove('auth_token');
+            await prefs.remove('email');
+            await prefs.remove('name');
+            await prefs.remove('role');
+            await prefs.remove('bakery_id');
+            await prefs.remove('my_bakery');
+            await prefs.remove('phone');
+            await prefs.remove('user_picture');
+          } else {
+            return {
+              'success': false,
+              'error': 'Session expirée, veuillez vous reconnecter.'
+            };
+          }
+        } else {
+          return {
+            'success': false,
+            'error': 'Erreur lors de la récupération du profil'
+          };
+        }
+      }
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+    return {
+      'success': false,
+      'error': 'Erreur inconnue lors de la récupération du profil'
+    };
   }
 
   void dispose() {

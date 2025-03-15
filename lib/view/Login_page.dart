@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application/custom_widgets/CustomTextField.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/view/admin/home_page_admin.dart';
+import 'package:flutter_application/view/manager/Editing_the_bakery_profile.dart';
 import 'package:flutter_application/view/manager/home_page_manager.dart';
 import 'package:flutter_application/view/user/home_page_user.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -59,7 +60,7 @@ class _LoginPageState extends State<LoginPage> {
     if(role=='admin'){
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomePageAdmin()));
     }else if(role=='manager'){
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomePageManager()));
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const EditingTheBakeryProfile()));
     }else if(role=='user'){
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomePageUser()));
     }else{
@@ -158,6 +159,8 @@ class _LoginPageState extends State<LoginPage> {
     final localization = AppLocalizations.of(context)!;
 
     return Scaffold(
+            backgroundColor: const Color(0xFFE5E7EB),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -236,7 +239,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildNameField(AppLocalizations localization) {
     return CustomTextField(
       controller: _nameController,
-      hintText: localization.name,
+      labelText: localization.name,
       icon: Icons.person,
       validator: (value) => value?.isEmpty ?? true
           ? '${localization.name} ${localization.isRequired}'
@@ -247,7 +250,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildEmailField(AppLocalizations localization) {
     return CustomTextField(
       controller: _emailController,
-      hintText: localization.email,
+      labelText: localization.email,
       icon: Icons.email,
       keyboardType: TextInputType.emailAddress,
       validator: (value) {
@@ -263,7 +266,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildPasswordField(AppLocalizations localization) {
     return CustomTextField(
       controller: _passwordController,
-      hintText: localization.password,
+      labelText: localization.password,
       icon: Icons.lock,
       obscureText: !_isPasswordVisible,
       suffixIcon: IconButton(
@@ -273,8 +276,9 @@ class _LoginPageState extends State<LoginPage> {
             setState(() => _isPasswordVisible = !_isPasswordVisible),
       ),
       validator: (value) {
-        if (value == null || value.isEmpty)
+        if (value == null || value.isEmpty) {
           return localization.passwordRequired;
+        }
         if (value.length < 6) return localization.passwordTooShort;
         return null;
       },
@@ -284,7 +288,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildPasswordConfirmationField(AppLocalizations localization) {
     return CustomTextField(
       controller: _passwordConfirmationController,
-      hintText: localization.passwordConfirmation,
+      labelText: localization.passwordConfirmation,
       icon: Icons.lock,
       obscureText: !_isPasswordConfirmationVisible,
       suffixIcon: IconButton(
@@ -297,10 +301,12 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
       validator: (value) {
-        if (value == null || value.isEmpty)
+        if (value == null || value.isEmpty) {
           return localization.confirmPasswordRequired;
-        if (value != _passwordController.text)
+        }
+        if (value != _passwordController.text) {
           return localization.passwordsDontMatch;
+        }
         return null;
       },
     );
@@ -309,7 +315,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildPhoneField(AppLocalizations localization) {
     return CustomTextField(
       controller: _phoneController,
-      hintText: localization.phone,
+      labelText: localization.phone,
       icon: Icons.phone,
       keyboardType: TextInputType.phone,
       validator: (value) {
