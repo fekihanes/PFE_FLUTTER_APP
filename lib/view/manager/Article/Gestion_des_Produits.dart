@@ -1,4 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedProductResponse.dart';
 import 'package:flutter_application/classes/Product.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
@@ -212,15 +214,27 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
             ),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(15),
-                  child: Image.network(
-                    product.picture,
-                    fit: BoxFit.cover,
-                    width: 100,
-                    height: 100,
-                  ),
-                ),
+          CachedNetworkImage(
+            imageUrl: ApiConfig.changePathImage(product.picture),
+            width: 100,
+            height: 100,
+            fit: BoxFit.cover,
+            progressIndicatorBuilder: (context, url, progress) => Center(
+              child: CircularProgressIndicator(
+                value: progress.progress,
+                color: const Color(0xFFFB8C00),
+              ),
+            ),
+            errorWidget: (context, url, error) => const Icon(Icons.error),
+            imageBuilder: (context, imageProvider) => ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: Image(
+                image: imageProvider,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          
                 const SizedBox(width: 20),
                 Expanded(
                   // Utilisation d'Expanded pour prendre l'espace dispo

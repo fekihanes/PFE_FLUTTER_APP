@@ -70,6 +70,7 @@
     "piece": "جزء",
     "kg": "كجم",
     "litre": "لتر",
+    "loadingMessage": "جارى التحميل ...",
     "searchByName": "البحث بالاسم",
     "enterQuantity": "ادخل الكمية",
     "updateConfirmation": "هل تريد تحديث المواد الاساسية؟",

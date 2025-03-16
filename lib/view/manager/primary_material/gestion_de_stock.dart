@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedPrimaryMaterialResponse.dart';
 import 'package:flutter_application/classes/PrimaryMaterial.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
@@ -7,6 +8,7 @@ import 'package:flutter_application/view/manager/primary_material/AddPrimary_mat
 import 'package:flutter_application/view/manager/primary_material/UpdatePrimary_materialPage.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class GestionDeStoke extends StatefulWidget {
   const GestionDeStoke({super.key});
@@ -105,7 +107,7 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
             const SizedBox(height: 20),
             _buildInput(),
             const SizedBox(height: 20),
-            Expanded(child: _buildListprimaryMaterials()),
+            Expanded(child: _buildListprimaryMaterials()), // Single Expanded here
           ],
         ),
       ),
@@ -169,38 +171,32 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
 
   Widget _buildListprimaryMaterials() {
     if (isLoading) {
-      return const Expanded(
-        child: Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFB8C00)),
-          ),
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFB8C00)),
         ),
       );
     }
 
     if (primaryMaterials.isEmpty) {
-      return Expanded(
-        child: Center(
-          child: Text(
-            AppLocalizations.of(context)!.noPrimaryMaterialsFound,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
+      return Center(
+        child: Text(
+          AppLocalizations.of(context)!.noPrimaryMaterialsFound,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey,
           ),
         ),
       );
     }
 
-    return Expanded(
-      child: ListView.builder(
-        itemCount: primaryMaterials.length,
-        itemBuilder: (context, index) {
-          final material = primaryMaterials[index];
-          return _buildMaterialItem(material);
-        },
-      ),
+    return ListView.builder(
+      itemCount: primaryMaterials.length,
+      itemBuilder: (context, index) {
+        final material = primaryMaterials[index];
+        return _buildMaterialItem(material);
+      },
     );
   }
 
@@ -221,15 +217,24 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
       ),
       child: Row(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Image.network(
-              material.image,
-              width: 100,
-              height: 100,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.error),
+          CachedNetworkImage(
+            imageUrl: ApiConfig.changePathImage(material.image),
+            width: 100,
+            height: 100,
+            fit: BoxFit.cover,
+            progressIndicatorBuilder: (context, url, progress) => Center(
+              child: CircularProgressIndicator(
+                value: progress.progress,
+                color: const Color(0xFFFB8C00),
+              ),
+            ),
+            errorWidget: (context, url, error) => const Icon(Icons.error),
+            imageBuilder: (context, imageProvider) => ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: Image(
+                image: imageProvider,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
           const SizedBox(width: 20),
@@ -315,10 +320,9 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '${reelQuantity} ${material.unit}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+            if(material.unit =='kg') Text('${material.reelQuantity} ${AppLocalizations.of(context)!.kg}',style: const TextStyle(fontWeight: FontWeight.bold),),
+            if(material.unit =='litre') Text('${material.reelQuantity} ${AppLocalizations.of(context)!.litre}',style: const TextStyle(fontWeight: FontWeight.bold),),
+            if(material.unit == 'piece') Text('${material.reelQuantity} ${AppLocalizations.of(context)!.piece}',style: const TextStyle(fontWeight: FontWeight.bold),),
             const SizedBox(height: 5),
             SizedBox(
               width: 70,

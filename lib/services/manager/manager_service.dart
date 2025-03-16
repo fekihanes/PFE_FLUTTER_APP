@@ -14,12 +14,10 @@ import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ManagerService {
-  static String baseUrl = Apiconfig().baseUrlManager;
-  static String publicbaseUrl = Apiconfig().baseUrl;
-  static String baseUrlManager_articles =
-      Apiconfig().baseUrlManager_bakery_articles;
-  static String baseUrlManager_bakery_primary_materials =
-      Apiconfig().baseUrlManager_bakery_primary_materials;
+  static String baseUrl = ApiConfig.baseUrlManager;
+  static String publicbaseUrl = ApiConfig.baseUrl;
+  static String baseUrlManager_articles =  ApiConfig.baseUrlManagerBakeryArticles;
+  static String baseUrlManager_bakery_primary_materials = ApiConfig.baseUrlManagerBakeryPrimaryMaterials;
   final http.Client _client = http.Client();
 
   void _showErrorSnackbar(BuildContext context, String message) {
@@ -1033,10 +1031,9 @@ class ManagerService {
           context, '${AppLocalizations.of(context)!.errorOccurred}: $error');
     }
   }
+
   Future<void> update_reel_quantity_Primary_material(
-      int id,
-      String reel_quantity,
-      BuildContext context) async {
+      int id, String reel_quantity, BuildContext context) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('auth_token');
@@ -1064,7 +1061,8 @@ class ManagerService {
       } else if (response.statusCode == 405) {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
-          return update_reel_quantity_Primary_material(id, reel_quantity, context);
+          return update_reel_quantity_Primary_material(
+              id, reel_quantity, context);
         } else {
           _showErrorSnackbar(
               context, AppLocalizations.of(context)!.sessionExpired);
@@ -1075,7 +1073,8 @@ class ManagerService {
         if (message == 'Unauthenticated.') {
           bool refreshed = await AuthService().refreshToken();
           if (refreshed) {
-            return update_reel_quantity_Primary_material(id, reel_quantity, context);
+            return update_reel_quantity_Primary_material(
+                id, reel_quantity, context);
           } else {
             _showErrorSnackbar(
                 context, AppLocalizations.of(context)!.sessionExpired);

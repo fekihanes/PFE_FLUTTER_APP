@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AdminService {
-   String baseUrl = Apiconfig().AdminbaseUrl;
+   String baseUrl = ApiConfig.adminBaseUrl;
   final http.Client _client = http.Client();
 
   void _showErrorSnackbar(BuildContext context, String message) {

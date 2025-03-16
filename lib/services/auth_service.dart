@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  final String baseUrl = Apiconfig().baseUrl;
+  final String baseUrl = ApiConfig.baseUrl;
   final http.Client _client = http.Client();
 
   Future<Map<String, dynamic>> login(

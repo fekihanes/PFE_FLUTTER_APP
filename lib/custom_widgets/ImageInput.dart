@@ -1,5 +1,7 @@
 import 'dart:typed_data';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
@@ -9,14 +11,16 @@ class ImageInputWidget extends StatefulWidget {
   final Function(String? imagePath, Uint8List? webImage) onImageSelected;
   final String? initialImage; // Peut être une URL
   final double height; // Paramètre height
-  final double width;  // Paramètre width
+  final double width; // Paramètre width
 
   const ImageInputWidget({
     Key? key,
     required this.onImageSelected,
     this.initialImage,
     required this.height, // Receive height
-    required this.width, String? imagePath, Uint8List? webImage,  // Receive width
+    required this.width,
+    String? imagePath,
+    Uint8List? webImage, // Receive width
   }) : super(key: key);
 
   @override
@@ -26,8 +30,10 @@ class ImageInputWidget extends StatefulWidget {
 class _ImageInputWidgetState extends State<ImageInputWidget> {
   String? _imagePath;
   Uint8List? _webImage;
-  bool get _isNetworkImage => widget.initialImage != null &&
-      (widget.initialImage!.startsWith('http://') || widget.initialImage!.startsWith('https://'));
+  bool get _isNetworkImage =>
+      widget.initialImage != null &&
+      (widget.initialImage!.startsWith('http://') ||
+          widget.initialImage!.startsWith('https://'));
 
   @override
   void initState() {
@@ -46,7 +52,8 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
           _webImage = webImage;
           _imagePath = result.name; // Stocker le nom du fichier
         });
-        widget.onImageSelected(result.name, webImage); // Envoyer les deux valeurs
+        widget.onImageSelected(
+            result.name, webImage); // Envoyer les deux valeurs
       } else {
         setState(() {
           _imagePath = result.path;
@@ -75,50 +82,72 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
               ? Image.memory(
                   _webImage!,
                   height: widget.height, // Use parameter height
-                  width: widget.width,   // Use parameter width
+                  width: widget.width, // Use parameter width
                   fit: BoxFit.cover,
                 )
               : (_imagePath != null && _imagePath!.isNotEmpty)
                   ? (_isNetworkImage
-                      ? Image.network(
-                          _imagePath!,
-                          height: widget.height, // Use parameter height
-                          width: widget.width,   // Use parameter width
+                      ? CachedNetworkImage(
+                          imageUrl: ApiConfig.changePathImage(_imagePath!),
+                          width: widget.width,
+                          height: widget.height,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(Icons.broken_image, size: 50, color: Colors.grey);
-                          },
+                          progressIndicatorBuilder: (context, url, progress) =>
+                              Center(
+                            child: CircularProgressIndicator(
+                              value: progress.progress,
+                              color: const Color(0xFFFB8C00),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => const Icon(
+                              Icons.broken_image,
+                              size: 50,
+                              color: Colors.grey),
+                          imageBuilder: (context, imageProvider) => ClipRRect(
+                            borderRadius: BorderRadius.circular(15),
+                            child: Image(
+                              image: imageProvider,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
                         )
                       : Image.file(
                           File(_imagePath!),
                           height: widget.height, // Use parameter height
-                          width: widget.width,   // Use parameter width
+                          width: widget.width, // Use parameter width
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
-                            return const Icon(Icons.broken_image, size: 50, color: Colors.grey);
+                            return const Icon(Icons.broken_image,
+                                size: 50, color: Colors.grey);
                           },
                         ))
                   : Container(
                       height: widget.height, // Use parameter height
-                      width: widget.width,   // Use parameter width
+                      width: widget.width, // Use parameter width
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(15),
                       ),
-                      child: const Icon(Icons.photo_library, size: 50, color: Colors.grey),
+                      child: const Icon(Icons.photo_library,
+                          size: 50, color: Colors.grey),
                     ),
         ),
         const SizedBox(height: 20),
         ElevatedButton.icon(
-          onPressed: _imagePath != null || _webImage != null ? _clearImage : _pickImage,
-          icon: Icon(_imagePath != null || _webImage != null ? Icons.delete : Icons.photo_library),
+          onPressed: _imagePath != null || _webImage != null
+              ? _clearImage
+              : _pickImage,
+          icon: Icon(_imagePath != null || _webImage != null
+              ? Icons.delete
+              : Icons.photo_library),
           label: Text(
             (_imagePath != null && _imagePath!.isNotEmpty) || _webImage != null
                 ? AppLocalizations.of(context)!.deleteImage
                 : AppLocalizations.of(context)!.chooseAnImage,
           ),
           style: ElevatedButton.styleFrom(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             backgroundColor: Colors.orange,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),

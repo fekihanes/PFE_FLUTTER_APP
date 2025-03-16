@@ -71,6 +71,7 @@
   "piece": "Piece",
   "kg": "Kg",
   "litre": "Litre",
+  "loadingMessage": "Chargement en cours...",
   "enterQuantity": "Entrer la quantité",
   "searchByName": "Recherche par nom",
   "updateConfirmation": "Êtes-vous sûr de vouloir mettre à jour cet élément ?",

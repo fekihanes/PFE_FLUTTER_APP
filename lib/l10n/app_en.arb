@@ -70,6 +70,7 @@
   "admin":"Admin",
   "manager":"Manager",
   "user":"User",
+  "loadingMessage": "Loading...",
   "searchByName": "Search by name",
   "enterQuantity": "Enter quantity",
   "updateConfirmation": "Are you sure you want to update this element?",

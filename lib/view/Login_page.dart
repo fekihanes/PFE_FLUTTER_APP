@@ -37,35 +37,36 @@ class _LoginPageState extends State<LoginPage> {
       Map<String, dynamic> result;
 
       if (_isConnexionSelected) {
-        result = await _authService.login(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-          context
-        );
+        result = await _authService.login(_emailController.text.trim(),
+            _passwordController.text.trim(), context);
       } else {
         result = await _authService.register(
-          _nameController.text.trim(),
-          _phoneController.text.trim(),
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-          _passwordConfirmationController.text.trim(),
-          context
-        );
+            _nameController.text.trim(),
+            _phoneController.text.trim(),
+            _emailController.text.trim(),
+            _passwordController.text.trim(),
+            _passwordConfirmationController.text.trim(),
+            context);
       }
 
       if (result['success'] && mounted) {
         if (_isConnexionSelected) {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String role = prefs.getString('role')??'' ;
-    if(role=='admin'){
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomePageAdmin()));
-    }else if(role=='manager'){
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const EditingTheBakeryProfile()));
-    }else if(role=='user'){
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomePageUser()));
-    }else{
-          _showSuccessSnackbar("bar nyyyk omk");
-    }
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          String role = prefs.getString('role') ?? '';
+          if (role == 'admin') {
+            Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (context) => const HomePageAdmin()));
+          } else if (role == 'manager') {
+            Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const EditingTheBakeryProfile()));
+          } else if (role == 'user') {
+            Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (context) => const HomePageUser()));
+          } else {
+            _showSuccessSnackbar("bar nyyyk omk");
+          }
         } else {
           _showSuccessSnackbar(AppLocalizations.of(context)!.unverified_email);
         }
@@ -78,7 +79,6 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
 
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -134,23 +134,22 @@ class _LoginPageState extends State<LoginPage> {
     if (email.isEmpty) {
       _showErrorSnackbar(AppLocalizations.of(context)!.emailRequired);
       return;
-    }else{
+    } else {
+      setState(() => _isLoading = true);
 
-    setState(() => _isLoading = true);
-
-    try {
-          
-      final result = await _authService.forgotPassword(email, context);
-      if (result['success']) {
-        _showSuccessSnackbar(AppLocalizations.of(context)!.email_sender);
-      } else {
-        _showErrorSnackbar(result['error']);
+      try {
+        final result = await _authService.forgotPassword(email, context);
+        if (result['success']) {
+          _showSuccessSnackbar(AppLocalizations.of(context)!.email_sender);
+        } else {
+          _showErrorSnackbar(result['error']);
+        }
+      } catch (e) {
+        _showErrorSnackbar(
+            AppLocalizations.of(context)!.errorSendingLink + e.toString());
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
       }
-    } catch (e) {
-      _showErrorSnackbar(AppLocalizations.of(context)!.errorSendingLink+ e.toString());
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
     }
   }
 
@@ -159,36 +158,37 @@ class _LoginPageState extends State<LoginPage> {
     final localization = AppLocalizations.of(context)!;
 
     return Scaffold(
-            backgroundColor: const Color(0xFFE5E7EB),
-
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildImage(),
-              const SizedBox(height: 20),
-              _buildToggleButtons(localization),
-              const SizedBox(height: 20),
-              if (!_isConnexionSelected) ...[
-                _buildNameField(localization),
+      backgroundColor: const Color(0xFFE5E7EB),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildImage(),
+                const SizedBox(height: 20),
+                _buildToggleButtons(localization),
+                const SizedBox(height: 20),
+                if (!_isConnexionSelected) ...[
+                  _buildNameField(localization),
+                  const SizedBox(height: 10),
+                  _buildPhoneField(localization),
+                  const SizedBox(height: 10),
+                ],
+                _buildEmailField(localization),
                 const SizedBox(height: 10),
-                _buildPhoneField(localization),
+                _buildPasswordField(localization),
+                if (!_isConnexionSelected) const SizedBox(height: 10),
+                if (!_isConnexionSelected)
+                  _buildPasswordConfirmationField(localization),
                 const SizedBox(height: 10),
+                if (_isConnexionSelected) _buildForgotPassword(localization),
+                const SizedBox(height: 30),
+                _buildSubmitButton(localization),
               ],
-              _buildEmailField(localization),
-              const SizedBox(height: 10),
-              _buildPasswordField(localization),
-              if (!_isConnexionSelected) const SizedBox(height: 10),
-              if (!_isConnexionSelected)
-                _buildPasswordConfirmationField(localization),
-              const SizedBox(height: 10),
-              if (_isConnexionSelected) _buildForgotPassword(localization),
-              const SizedBox(height: 30),
-              _buildSubmitButton(localization),
-            ],
+            ),
           ),
         ),
       ),
@@ -197,9 +197,14 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _buildImage() {
     return Image.asset(
-      'images/login_image.png',
-      width: MediaQuery.of(context).size.width * 0.8,
-    );
+  'assets/images/login_image.png', // Chemin absolu depuis la racine
+  width: MediaQuery.of(context).size.width * 0.8,
+  cacheWidth: 600, // Optimisation pour Android
+  filterQuality: FilterQuality.low,
+  errorBuilder: (context, error, stackTrace) {
+    return Text('Erreur de chargement: $error'); // Debug visuel
+  },
+);
   }
 
   Widget _buildToggleButtons(AppLocalizations localization) {
@@ -393,6 +398,4 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
-
-
 }
