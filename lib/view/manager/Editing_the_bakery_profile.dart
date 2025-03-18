@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/Bakery.dart';
+import 'package:flutter_application/classes/traductions.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
 import 'package:flutter_application/custom_widgets/CustomTextField.dart';
 import 'package:flutter_application/custom_widgets/ImageInput.dart';
@@ -19,6 +20,8 @@ class EditingTheBakeryProfile extends StatefulWidget {
 }
 
 class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
+  bool _isSaving = false;
+
   Bakery? bakery;
   String? _imagePath;
   String? oldimage;
@@ -28,7 +31,6 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
   String? _selectedDay;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -45,7 +47,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
   @override
   void initState() {
     super.initState();
-    fetchData(); 
+    fetchData();
   }
 
   Future<void> fetchData() async {
@@ -59,7 +61,6 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
           name: '',
           email: '',
           phone: '',
-          address: '',
           image: null, // Initialiser à null au lieu de chaîne vide
           openingHours: '{}',
           managerId: _getCurrentManagerId(),
@@ -79,7 +80,6 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
             _nameController.text = bakery!.name;
             _emailController.text = bakery!.email;
             _phoneController.text = bakery!.phone;
-            _addressController.text = bakery!.address;
             _imagePath = bakery!.image;
             oldimage = bakery!.image;
             _openingHours = {};
@@ -99,7 +99,6 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
               name: '',
               email: '',
               phone: '',
-              address: '',
               image: '',
               openingHours: '{}',
               managerId: _getCurrentManagerId(),
@@ -132,7 +131,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
     setState(() {
       _imagePath = imagePath;
       _webImage = webImage;
-      
+
       // Forcer le rafraîchissement de l'état
       if (imagePath == null && webImage == null) {
         bakery = bakery?.copyWith(image: null);
@@ -174,7 +173,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '${AppLocalizations.of(context)!.fillAllFields} for $day',
+              '${AppLocalizations.of(context)!.fillAllFields} for ${Traductions().getTranslatedDay(context, day)}',
             ),
             backgroundColor: Colors.red,
           ),
@@ -194,7 +193,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '${AppLocalizations.of(context)!.endAfterStart} for $day',
+              '${AppLocalizations.of(context)!.endAfterStart} for ${Traductions().getTranslatedDay(context, day)}',
             ),
             backgroundColor: Colors.red,
           ),
@@ -209,7 +208,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '${AppLocalizations.of(context)!.deadlineBeforeEnd} for $day',
+              '${AppLocalizations.of(context)!.deadlineBeforeEnd} for ${Traductions().getTranslatedDay(context, day)}',
             ),
             backgroundColor: Colors.red,
           ),
@@ -233,27 +232,6 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
       return "${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}";
     } catch (e) {
       return '00:00'; // default if parsing fails
-    }
-  }
-
-  String getTranslatedDay(String day) {
-    switch (day) {
-      case 'monday':
-        return AppLocalizations.of(context)!.monday;
-      case 'tuesday':
-        return AppLocalizations.of(context)!.tuesday;
-      case 'wednesday': // Added missing case
-        return AppLocalizations.of(context)!.wednesday;
-      case 'thursday':
-        return AppLocalizations.of(context)!.thursday;
-      case 'friday':
-        return AppLocalizations.of(context)!.friday;
-      case 'saturday':
-        return AppLocalizations.of(context)!.saturday;
-      case 'sunday':
-        return AppLocalizations.of(context)!.sunday;
-      default:
-        return day;
     }
   }
 
@@ -282,9 +260,10 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
       ),
       drawer: const CustomDrawerManager(),
       body: bakery == null
-          ? const Center(child: CircularProgressIndicator(
-            color: Color(0xFFFB8C00),
-          ))
+          ? const Center(
+              child: CircularProgressIndicator(
+              color: Color(0xFFFB8C00),
+            ))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Form(
@@ -301,10 +280,9 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
                     const SizedBox(height: 20),
                     _buildInputPhone(),
                     const SizedBox(height: 20),
-                    _buildInputAddress(),
-                    const SizedBox(height: 20),
                     _buildOpeningHours(availableDays),
                     const SizedBox(height: 20),
+                    _buildContainerLocalization(bakery!),
                     _buildSaveButton(),
                   ],
                 ),
@@ -368,20 +346,6 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
     );
   }
 
-  Widget _buildInputAddress() {
-    return _buildCustomTextField(
-      _addressController,
-      AppLocalizations.of(context)!.bakery_address,
-      Icons.location_on,
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return AppLocalizations.of(context)!.requiredField;
-        }
-        return null;
-      },
-    );
-  }
-
   Widget _buildOpeningHours(List<String> availableDays) {
     // Trier les entrées selon l'ordre des jours
     final sortedEntries = _openingHours.entries.toList()
@@ -417,7 +381,9 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
                   Row(
                     children: [
                       Text(
-                        getTranslatedDay(day).toUpperCase(),
+                        Traductions()
+                            .getTranslatedDay(context, day)
+                            .toUpperCase(),
                         style: const TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
@@ -458,17 +424,59 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
     );
   }
 
-  String getTranslatedkey(String key) {
-    switch (key) {
-      case 'start':
-        return AppLocalizations.of(context)!.start;
-      case 'end':
-        return AppLocalizations.of(context)!.end;
-      case 'deadline':
-        return AppLocalizations.of(context)!.deadline;
-      default:
-        return key;
+  Widget _buildContainerLocalization(Bakery bakery) {
+    if ((bakery.subAdministrativeArea?.isNotEmpty ?? false) &&
+        (bakery.administrativeArea?.isNotEmpty ?? false)) {
+      return Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey),
+              borderRadius: BorderRadius.circular(10),
+              color: Colors.white,
+            ),
+            child: Column(
+              children: [
+                if (bakery.street != null && bakery.street != '')
+                  buildAddressRow(Icons.home, "Rue", bakery.street ?? ''),
+                buildAddressRow(
+                    Icons.map, "Sous-zone", bakery.subAdministrativeArea ?? ''),
+                buildAddressRow(
+                    Icons.place, "Région", bakery.administrativeArea ?? ''),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 20,
+          )
+        ],
+      );
+    } else {
+      return SizedBox.shrink(); // Évite un espace vide inutile
     }
+  }
+
+  Widget buildAddressRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 20.0),
+      child: Row(
+        children: [
+          Icon(icon, color: Color(0xFFFB8C00)),
+          SizedBox(width: 10),
+          Text(
+            '$label : ',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 16, color: Colors.black54),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildTimeField(String day, String key, String initialValue) {
@@ -478,7 +486,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
         text: _formatTimeForDisplay(initialValue),
       ),
       decoration: InputDecoration(
-        labelText: getTranslatedkey(key).toUpperCase(),
+        labelText: Traductions().getTranslatedkey(context, key).toUpperCase(),
       ),
       onTap: () async {
         TimeOfDay? pickedTime = await showTimePicker(
@@ -517,7 +525,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
           items: availableDays.map((day) {
             return DropdownMenuItem(
               value: day,
-              child: Text(getTranslatedDay(day)),
+              child: Text(Traductions().getTranslatedDay(context, day)),
             );
           }).toList(),
           onChanged: (value) {
@@ -541,76 +549,233 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
   }
 
   Widget _buildSaveButton() {
-    return Center(
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFFB8C00)),
-        onPressed: () async {
-          if (_formKey.currentState?.validate() ?? false) {
-            // Validation des horaires
-            if (_openingHours.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(AppLocalizations.of(context)!.requiredOpeningHours),
-                  backgroundColor: Colors.red,
+    if (bakery?.id == -1) {
+      return Center(
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xFFFB8C00),
+          ),
+          onPressed: _isSaving
+              ? null
+              : () async {
+                  setState(() {
+                    _isSaving = true;
+                  });
+
+                  if (_formKey.currentState?.validate() ?? false) {
+                    if (_openingHours.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(AppLocalizations.of(context)!
+                              .requiredOpeningHours),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      setState(() {
+                        _isSaving = false;
+                      });
+                      return;
+                    }
+                    if (!_validateOpeningHours()) {
+                      setState(() {
+                        _isSaving = false;
+                      });
+                      return;
+                    }
+
+                    if (bakery!.id == -1 &&
+                        (_imagePath?.isEmpty ?? true) &&
+                        _webImage == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content:
+                              Text(AppLocalizations.of(context)!.requiredImage),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      setState(() {
+                        _isSaving = false;
+                      });
+                      return;
+                    }
+
+                    String image = _imagePath ?? '';
+                    if (kIsWeb && _webImage != null) {
+                      image = base64Encode(_webImage!);
+                    }
+
+                    Bakery updatedBakery = Bakery(
+                      id: bakery!.id,
+                      name: _nameController.text,
+                      email: _emailController.text,
+                      phone: _phoneController.text,
+                      image: image,
+                      openingHours: jsonEncode(_openingHours),
+                      managerId: bakery!.managerId,
+                      createdAt: bakery!.createdAt,
+                      updatedAt: DateTime.now(),
+                    );
+
+                    try {
+                      if (bakery!.id == -1) {
+                        await ManagerService()
+                            .createBakery(context, updatedBakery);
+                        fetchData();
+                      } else {
+                        await ManagerService()
+                            .updateBakery(context, updatedBakery, oldimage!);
+                      }
+                    } catch (e) {
+                      print('Error updating bakery: $e');
+                    }
+
+                    setState(() {
+                      _isSaving = false;
+                    });
+                  }
+                },
+          child: _isSaving
+              ? CircularProgressIndicator(color: Colors.white)
+              : Text(
+                  AppLocalizations.of(context)!.save,
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
                 ),
-              );
-              return;
-            }
+        ),
+      );
+    } else {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFFFB8C00),
+            ),
+            onPressed: _isSaving
+                ? null
+                : () async {
+                    setState(() {
+                      _isSaving = true;
+                    });
 
-            // Validation de l'image pour les nouvelles créations
-            if (bakery!.id == -1 && (_imagePath?.isEmpty ?? true) && _webImage == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(AppLocalizations.of(context)!.requiredImage),
-                  backgroundColor: Colors.red,
-                ),
-              );
-              return;
-            }
+                    if (_formKey.currentState?.validate() ?? false) {
+                      if (_openingHours.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(AppLocalizations.of(context)!
+                                .requiredOpeningHours),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        setState(() {
+                          _isSaving = false;
+                        });
+                        return;
+                      }
+                      if (!_validateOpeningHours()) {
+                        setState(() {
+                          _isSaving = false;
+                        });
+                        return;
+                      }
 
-            // Conversion de l'image
-            String image = _imagePath ?? '';
-            if (kIsWeb && _webImage != null) {
-              image = base64Encode(_webImage!);
-            }
+                      if (bakery!.id == -1 &&
+                          (_imagePath?.isEmpty ?? true) &&
+                          _webImage == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                AppLocalizations.of(context)!.requiredImage),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        setState(() {
+                          _isSaving = false;
+                        });
+                        return;
+                      }
 
-            Bakery updatedBakery = Bakery(
-              id: bakery!.id,
-              name: _nameController.text,
-              email: _emailController.text,
-              phone: _phoneController.text,
-              address: _addressController.text,
-              image: image,
-              openingHours: jsonEncode(_openingHours),
-              managerId: bakery!.managerId,
-              createdAt: bakery!.createdAt,
-              updatedAt: DateTime.now(),
-            );
+                      String image = _imagePath ?? '';
+                      if (kIsWeb && _webImage != null) {
+                        image = base64Encode(_webImage!);
+                      }
 
-            try {
-              if (bakery!.id == -1) {
-                await ManagerService().createBakery(context, updatedBakery);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const EditingTheBakeryProfile()),
-                );
-              } else {
-                await ManagerService()
-                    .updateBakery(context, updatedBakery, oldimage!);
-              }
-            } catch (e) {
-              print('Error updating bakery: $e');
-            }
-          }
-        },
-        child: Text(AppLocalizations.of(context)!.save,
-            style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white)),
-      ),
-    );
+                      Bakery updatedBakery = Bakery(
+                        id: bakery!.id,
+                        name: _nameController.text,
+                        email: _emailController.text,
+                        phone: _phoneController.text,
+                        image: image,
+                        openingHours: jsonEncode(_openingHours),
+                        managerId: bakery!.managerId,
+                        createdAt: bakery!.createdAt,
+                        updatedAt: DateTime.now(),
+                      );
+
+                      try {
+                        if (bakery!.id == -1) {
+                          await ManagerService()
+                              .createBakery(context, updatedBakery);
+                          fetchData();
+                        } else {
+                          await ManagerService()
+                              .updateBakery(context, updatedBakery, oldimage!);
+                        }
+                      } catch (e) {
+                        print('Error updating bakery: $e');
+                      }
+
+                      setState(() {
+                        _isSaving = false;
+                      });
+                    }
+                  },
+            child: _isSaving
+                ? CircularProgressIndicator(color: Colors.white)
+                : Text(
+                    AppLocalizations.of(context)!.save,
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
+                  ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFFFB8C00),
+            ),
+            onPressed: _isSaving
+                ? null
+                : () async {
+                    setState(() {
+                      _isSaving = true;
+                    });
+
+                    try {
+                      await ManagerService()
+                          .updateBakeryLocalization(context, bakery!.id);
+                    } catch (e) {}
+
+                    setState(() {
+                      _isSaving = false;
+                    });
+                    fetchData();
+                  },
+            child: _isSaving
+                ? CircularProgressIndicator(color: Colors.white)
+                : Text(
+                    AppLocalizations.of(context)!.save_new_localization,
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
+                  ),
+          ),
+        ],
+      );
+    }
   }
 
   Widget _buildCustomTextField(

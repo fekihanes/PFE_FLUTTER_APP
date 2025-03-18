@@ -11,19 +11,19 @@ import 'package:flutter_application/view/manager/editing_the_bakery_profile.dart
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 // Configuration multi-plateforme
-ValueNotifier<Locale> localeNotifier = ValueNotifier<Locale>(const Locale('en'));
+ValueNotifier<Locale> localeNotifier =
+    ValueNotifier<Locale>(const Locale('en'));
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
     final prefs = await SharedPreferences.getInstance();
     final defaultLocale = WidgetsBinding.instance.platformDispatcher.locale;
     final language = prefs.getString('language') ?? defaultLocale.languageCode;
-    
-    localeNotifier.value = L10n.all.contains(Locale(language)) 
-        ? Locale(language)
-        : defaultLocale;
+
+    localeNotifier.value =
+        L10n.all.contains(Locale(language)) ? Locale(language) : defaultLocale;
   } catch (e) {
     localeNotifier.value = const Locale('en');
   }
@@ -35,11 +35,10 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   Future<Widget> _getHomePage() async {
+    final userProfile = await AuthService().getUserProfile();
     try {
       final prefs = await SharedPreferences.getInstance();
       final role = prefs.getString('role');
-      
-
 
       switch (role) {
         case 'admin':
@@ -100,7 +99,7 @@ class MyApp extends StatelessWidget {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return _buildLoadingScreen(context);
               }
-              return snapshot.hasError 
+              return snapshot.hasError
                   ? _buildErrorPage(snapshot.error.toString())
                   : snapshot.data!;
             },

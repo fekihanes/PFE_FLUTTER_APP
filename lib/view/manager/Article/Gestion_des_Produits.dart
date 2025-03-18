@@ -280,7 +280,15 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
                         ],
                       ),
                       Text(
-                        "${product.price.toStringAsFixed(2)} DT",
+                        "${ AppLocalizations.of(context)!.productPrice}: ${product.price.toStringAsFixed(2)} DT",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Color(0xFFFB8C00),
+                        ),
+                      ),
+                      Text(
+                        "${AppLocalizations.of(context)!.productwholesale_price}: ${ product.wholesale_price.toStringAsFixed(2)} DT",
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,

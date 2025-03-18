@@ -45,6 +45,18 @@ dependencies:
   geolocator: ^9.0.2
   geocoding: ^2.0.0
   cached_network_image: ^3.4.1
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/icon.png"
+  web:
+    generate: true
+    image_path: "assets/icon/icon.png" # Ensure this path is correct
+    background_color: "#ffffff" # Change this to the desired background color
+    theme_color: "#000000" # Change this to the desired theme color
+
 
 
 dev_dependencies:

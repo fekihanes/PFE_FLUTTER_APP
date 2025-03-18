@@ -2,33 +2,15 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedUserResponse.dart';
+import 'package:flutter_application/custom_widgets/customSnackbar.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AdminService {
-   String baseUrl = ApiConfig.adminBaseUrl;
+  String baseUrl = ApiConfig.adminBaseUrl;
   final http.Client _client = http.Client();
-
-  void _showErrorSnackbar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-  void _showSuccessSnackbar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
   Future<PaginatedUserResponse?> searchUsers(
     BuildContext context, {
     required int page,
@@ -41,7 +23,7 @@ class AdminService {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('auth_token');
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return null;
       }
@@ -81,33 +63,33 @@ class AdminService {
         if (refreshed) {
           return searchUsers(context, page: page, query: query);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
           return null;
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(response.body);
         String message = jsonResponse['message'] ?? 'Unauthenticated.';
-        if(message == 'Unauthenticated.') {
-            bool refreshed = await AuthService().refreshToken();
-        if (refreshed) {
-          return searchUsers(context, page: page, query: query);
-        } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
-          return null;
+        if (message == 'Unauthenticated.') {
+          bool refreshed = await AuthService().refreshToken();
+          if (refreshed) {
+            return searchUsers(context, page: page, query: query);
+          } else {
+            Customsnackbar().showErrorSnackbar(
+                context, AppLocalizations.of(context)!.sessionExpired);
+            return null;
+          }
         }
-        }
-        _showErrorSnackbar(context, message);
+        Customsnackbar().showErrorSnackbar(context, message);
         return null;
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
         return null;
       }
     } catch (e) {
       if (test200 == 0) {
-        _showErrorSnackbar(context, AppLocalizations.of(context)!.networkError);
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.networkError);
       }
       return null;
     }
@@ -118,7 +100,7 @@ class AdminService {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('auth_token');
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return;
       }
@@ -133,36 +115,41 @@ class AdminService {
       );
 
       if (response.statusCode == 200) {
-        _showSuccessSnackbar(context, 'User status updated successfully.');
+        Customsnackbar()
+            .showSuccessSnackbar(context, 'User status updated successfully.');
+      } else if (response.statusCode == 422) {
+        final jsonResponse = jsonDecode(await response.body);
+
+        Customsnackbar().showErrorSnackbar(context, jsonResponse['message']);
       } else if (response.statusCode == 405) {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
           return updateUserStatus(userId, enable, context);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
           return;
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(response.body);
         String message = jsonResponse['message'] ?? 'Unauthenticated.';
-        if(message == 'Unauthenticated.') {
-           bool refreshed = await AuthService().refreshToken();
-        if (refreshed) {
-          return updateUserStatus(userId, enable, context);
-        } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
-          return;
+        if (message == 'Unauthenticated.') {
+          bool refreshed = await AuthService().refreshToken();
+          if (refreshed) {
+            return updateUserStatus(userId, enable, context);
+          } else {
+            Customsnackbar().showErrorSnackbar(
+                context, AppLocalizations.of(context)!.sessionExpired);
+            return;
+          }
         }
-        }
-        _showErrorSnackbar(context, message);
+        Customsnackbar().showErrorSnackbar(context, message);
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
       }
     } catch (e) {
-      _showErrorSnackbar(context, AppLocalizations.of(context)!.networkError);
+      Customsnackbar().showErrorSnackbar(
+          context, AppLocalizations.of(context)!.networkError);
     }
   }
 
@@ -171,7 +158,7 @@ class AdminService {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('auth_token');
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return;
       }
@@ -186,14 +173,18 @@ class AdminService {
       );
 
       if (response.statusCode == 200) {
-        _showSuccessSnackbar(context, 'User role updated successfully.');
+        Customsnackbar()
+            .showSuccessSnackbar(context, 'User role updated successfully.');
+      } else if (response.statusCode == 422) {
+        final jsonResponse = jsonDecode(await response.body);
+
+        Customsnackbar().showErrorSnackbar(context, jsonResponse['message']);
       } else if (response.statusCode == 405) {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
           return updateUserRole(userId, role, context);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
           return;
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
@@ -201,21 +192,22 @@ class AdminService {
         String message = jsonResponse['message'] ?? 'Unauthenticated.';
         if (message == 'Unauthenticated.') {
           bool refreshed = await AuthService().refreshToken();
-        if (refreshed) {
-          return updateUserRole(userId, role, context);
-        } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
-          return;
+          if (refreshed) {
+            return updateUserRole(userId, role, context);
+          } else {
+            Customsnackbar().showErrorSnackbar(
+                context, AppLocalizations.of(context)!.sessionExpired);
+            return;
+          }
         }
-        }
-        _showErrorSnackbar(context, message);
+        Customsnackbar().showErrorSnackbar(context, message);
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
       }
     } catch (e) {
-      _showErrorSnackbar(context, AppLocalizations.of(context)!.networkError);
+      Customsnackbar().showErrorSnackbar(
+          context, AppLocalizations.of(context)!.networkError);
     }
   }
 
@@ -224,7 +216,7 @@ class AdminService {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('auth_token');
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return;
       }
@@ -237,36 +229,37 @@ class AdminService {
       );
 
       if (response.statusCode == 200) {
-        _showSuccessSnackbar(context, 'User deleted successfully.');
+        Customsnackbar()
+            .showSuccessSnackbar(context, 'User deleted successfully.');
       } else if (response.statusCode == 405) {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
           return deleteUser(userId, context);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
           return;
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(response.body);
         String message = jsonResponse['message'] ?? 'Unauthenticated.';
-        if(message == 'Unauthenticated.') {
-           bool refreshed = await AuthService().refreshToken();
-        if (refreshed) {
-          return deleteUser(userId, context);
-        } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
-          return;
+        if (message == 'Unauthenticated.') {
+          bool refreshed = await AuthService().refreshToken();
+          if (refreshed) {
+            return deleteUser(userId, context);
+          } else {
+            Customsnackbar().showErrorSnackbar(
+                context, AppLocalizations.of(context)!.sessionExpired);
+            return;
+          }
         }
-        }
-        _showErrorSnackbar(context, message);
+        Customsnackbar().showErrorSnackbar(context, message);
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
       }
     } catch (e) {
-      _showErrorSnackbar(context, AppLocalizations.of(context)!.networkError);
+      Customsnackbar().showErrorSnackbar(
+          context, AppLocalizations.of(context)!.networkError);
     }
   }
 }

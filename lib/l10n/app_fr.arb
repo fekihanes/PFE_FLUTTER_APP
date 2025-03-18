@@ -95,6 +95,7 @@
   "salty": "Salé",
   "sweet": "Sucré",
   "add": "Ajouter",
+  "save_new_localization": "Enregistrer une nouvelle localisation",
   "updateProduct": "Mettre à jour le produit",
   "productAdded": "Produit ajouté avec succès.",
   "productUpdated": "Produit mis à jour avec succès.",
@@ -103,6 +104,8 @@
   "deleteImage": "Supprimer l'image",
   "invalidPrice": "Veuillez entrer un prix valide (ex: 12.99)",
   "requiredImage": "Une image est requise",
+  "productwholesale_price": "Prix de gros",
+  "wholesalePriceError": "Veuillez entrer un prix de gros valide < Prix de vente",
   "requiredOpeningHours": "Veuillez choisir des heures d'ouverture",
 
   "bakeryManagement": "Gestion de la Boulangerie",

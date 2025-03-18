@@ -21,6 +21,7 @@ class _UpdateProductPageState extends State<UpdateProductPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _priceController;
+  late TextEditingController _wholesale_priceController;
   bool _isSaltySelected = true;
   String? _oldImage;
   String? _imagePath;
@@ -35,8 +36,8 @@ class _UpdateProductPageState extends State<UpdateProductPage> {
       ManagerService().havebakery(context);
     });
     _nameController = TextEditingController(text: widget.product.name);
-    _priceController =
-        TextEditingController(text: widget.product.price.toString());
+    _priceController = TextEditingController(text: widget.product.price.toString());
+    _wholesale_priceController = TextEditingController(text: widget.product.wholesale_price.toString());
     _isSaltySelected = widget.product.type == 'Salty';
     _oldImage = widget.product.picture;
     _imagePath = widget.product.picture;
@@ -61,6 +62,7 @@ class _UpdateProductPageState extends State<UpdateProductPage> {
         _nameController.text,
         _priceController.text,
         _isSaltySelected ? 'Salty' : 'Sweet',
+        _wholesale_priceController.text,
         picture,
         _oldImage!,
         context,
@@ -109,6 +111,27 @@ class _UpdateProductPageState extends State<UpdateProductPage> {
                   final RegExp regex = RegExp(r'^\d+(\.\d{0,2})?$');
                   if (!regex.hasMatch(value)) {
                     return AppLocalizations.of(context)!.invalidPrice;
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+             CustomTextField(
+                controller: _wholesale_priceController,
+                labelText: AppLocalizations.of(context)!.productwholesale_price,
+                icon: Icons.attach_money,
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return AppLocalizations.of(context)!.requiredField;
+                  }
+                  final RegExp regex = RegExp(r'^\d+(\.\d{0,2})?$');
+                  if (!regex.hasMatch(value)) {
+                    return AppLocalizations.of(context)!.invalidPrice;
+                  }
+                  if (double.tryParse(value)! >
+                      double.tryParse(_priceController.text)!) {
+                    return AppLocalizations.of(context)!.wholesalePriceError;
                   }
                   return null;
                 },

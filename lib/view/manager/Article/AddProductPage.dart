@@ -16,6 +16,8 @@ class _AddProductPageState extends State<AddProductPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _wholesale_priceController =
+      TextEditingController();
   bool _isSaltySelected = true;
   String? _imagePath;
   Uint8List? _webImage;
@@ -48,6 +50,7 @@ class _AddProductPageState extends State<AddProductPage> {
         _nameController.text,
         _priceController.text,
         _isSaltySelected ? 'Salty' : 'Sweet',
+        _wholesale_priceController.text,
         picture,
         context,
       );
@@ -95,6 +98,27 @@ class _AddProductPageState extends State<AddProductPage> {
                   final RegExp regex = RegExp(r'^\d+(\.\d{0,2})?$');
                   if (!regex.hasMatch(value)) {
                     return AppLocalizations.of(context)!.invalidPrice;
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              CustomTextField(
+                controller: _wholesale_priceController,
+                labelText: AppLocalizations.of(context)!.productwholesale_price,
+                icon: Icons.attach_money,
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return AppLocalizations.of(context)!.requiredField;
+                  }
+                  final RegExp regex = RegExp(r'^\d+(\.\d{0,2})?$');
+                  if (!regex.hasMatch(value)) {
+                    return AppLocalizations.of(context)!.invalidPrice;
+                  }
+                  if (double.tryParse(value)! >
+                      double.tryParse(_priceController.text)!) {
+                    return AppLocalizations.of(context)!.wholesalePriceError;
                   }
                   return null;
                 },

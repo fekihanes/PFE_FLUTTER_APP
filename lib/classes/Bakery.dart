@@ -1,10 +1,14 @@
 class Bakery {
   final int id;
   final String name;
-  final String address;
+  String? street;
+  String? subAdministrativeArea;
+  String? administrativeArea;
+  String? latitude;
+  String? longitude;
   final String phone;
   final String email;
-  final String ?image;
+  final String? image;
   final String openingHours;
   final int managerId;
   final DateTime createdAt;
@@ -13,7 +17,11 @@ class Bakery {
   Bakery({
     required this.id,
     required this.name,
-    required this.address,
+    this.street,
+    this.subAdministrativeArea,
+    this.administrativeArea,
+    this.latitude,
+    this.longitude,
     required this.phone,
     required this.email,
     required this.image,
@@ -28,7 +36,11 @@ class Bakery {
     return Bakery(
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
-      address: json['address'] ?? '',
+      longitude: json['longitude'] ?? '',
+      latitude: json['latitude'] ?? '',
+      administrativeArea: json['administrativeArea'] ?? '',
+      street: json['street'] ?? '',
+      subAdministrativeArea: json['subAdministrativeArea'] ?? '',
       phone: json['phone'] ?? '',
       email: json['email'] ?? '',
       image: json['image'],
@@ -44,7 +56,11 @@ class Bakery {
     return {
       'id': id,
       'name': name,
-      'address': address,
+      'street': street,
+      'subAdministrativeArea': subAdministrativeArea,
+      'administrativeArea': administrativeArea,
+      'latitude': latitude,
+      'longitude': longitude,
       'phone': phone,
       'email': email,
       'image': image,
@@ -54,12 +70,18 @@ class Bakery {
       'updated_at': updatedAt.toIso8601String(),
     };
   }
+
+  // Copy with
   Bakery copyWith({
     int? id,
     String? name,
-    String? email,
+    String? street,
+    String? subAdministrativeArea,
+    String? administrativeArea,
+    String? latitude,
+    String? longitude,
     String? phone,
-    String? address,
+    String? email,
     String? image,
     String? openingHours,
     int? managerId,
@@ -69,9 +91,14 @@ class Bakery {
     return Bakery(
       id: id ?? this.id,
       name: name ?? this.name,
-      email: email ?? this.email,
+      street: street ?? this.street,
+      subAdministrativeArea:
+          subAdministrativeArea ?? this.subAdministrativeArea,
+      administrativeArea: administrativeArea ?? this.administrativeArea,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       phone: phone ?? this.phone,
-      address: address ?? this.address,
+      email: email ?? this.email,
       image: image ?? this.image,
       openingHours: openingHours ?? this.openingHours,
       managerId: managerId ?? this.managerId,

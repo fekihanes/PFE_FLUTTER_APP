@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
+import 'package:flutter_application/view/Login_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AuthService {
   final String baseUrl = ApiConfig.baseUrl;
   final http.Client _client = http.Client();
+  
 
   Future<Map<String, dynamic>> login(
       String email, String password, context) async {
@@ -260,14 +263,11 @@ class AuthService {
         await prefs.setString('auth_token', newToken);
         await prefs.setString('refresh_token', newRefreshToken);
 
-        print("Token rafraîchi avec succès !");
         return true;
       } else {
-        print("Échec du rafraîchissement du token : ${response.body}");
         return false;
       }
     } catch (e) {
-      print("Erreur lors du rafraîchissement du token : $e");
       return false;
     }
   }
@@ -350,5 +350,24 @@ class AuthService {
 
   void dispose() {
     _client.close();
+  }
+
+  Future<void> expaildtokent(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('refresh_token');
+    await prefs.remove('auth_token');
+    await prefs.remove('email');
+    await prefs.remove('name');
+    await prefs.remove('role');
+    await prefs.remove('bakery_id');
+    await prefs.remove('my_bakery');
+    await prefs.remove('phone');
+    await prefs.remove('user_picture');
+     Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const LoginPage(),
+        ),
+      );
   }
 }

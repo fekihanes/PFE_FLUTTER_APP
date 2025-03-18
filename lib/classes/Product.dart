@@ -5,8 +5,11 @@ class Product {
   final int bakeryId; // Foreign key to bakeries table
   final String name;
   final double price;
+  final double wholesale_price;
   final String type;
+  final int reel_quantity;
   final String picture;
+  String? description;
   final DateTime createdAt;
   final DateTime updatedAt;
   final Bakery bakery; // Added bakery object
@@ -17,8 +20,11 @@ class Product {
     required this.bakeryId,
     required this.name,
     required this.price,
+    required this.wholesale_price,
     required this.type,
+    required this.reel_quantity,
     required this.picture,
+    required this.description,
     required this.createdAt,
     required this.updatedAt,
     required this.bakery, // Added bakery
@@ -34,8 +40,11 @@ class Product {
       bakeryId: json['bakery_id'] ?? 0,
       name: json['name'] ?? '',
       price: double.tryParse(json['price'] ?? '') ?? 0.0, // Handle string to double
+      wholesale_price: double.tryParse(json['wholesale_price'] ?? '') ?? 0.0, // Handle string to double
       type: json['type'] ?? '',
+      reel_quantity: json['reel_quantity'] ?? 0,
       picture: json['picture'],
+      description: json['description'],
       createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
       updatedAt: DateTime.tryParse(json['updated_at'] ?? '') ?? DateTime.now(),
       bakery: bakery, // Set bakery object
@@ -49,8 +58,11 @@ class Product {
       'bakery_id': bakeryId,
       'name': name,
       'price': price,
+      'wholesale_price': wholesale_price,
       'type': type,
+      'reel_quantity': reel_quantity,
       'picture': picture,
+      'description': description,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'bakery': bakery.toJson(), // Convert bakery to JSON
@@ -60,7 +72,7 @@ class Product {
   // ToString: A method to return a string representation of the object
   @override
   String toString() {
-    return 'Product{id: $id, bakeryId: $bakeryId, name: $name, price: $price, type: $type, picture: $picture, createdAt: $createdAt, updatedAt: $updatedAt}';
+    return 'Product{id: $id, bakeryId: $bakeryId, name: $name, price: $price, wholesale_price: $wholesale_price, reel_quantity: $reel_quantity, type: $type, description: $description, picture: $picture, createdAt: $createdAt, updatedAt: $updatedAt}';
   }
 }
 

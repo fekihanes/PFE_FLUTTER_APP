@@ -5,9 +5,12 @@ import 'package:flutter_application/classes/Bakery.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedPrimaryMaterialResponse.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedProductResponse.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedUserResponse.dart';
+import 'package:flutter_application/custom_widgets/customSnackbar.dart';
+import 'package:flutter_application/services/LocationService.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/view/manager/Editing_the_bakery_profile.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http_parser/http_parser.dart';
@@ -16,27 +19,11 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class ManagerService {
   static String baseUrl = ApiConfig.baseUrlManager;
   static String publicbaseUrl = ApiConfig.baseUrl;
-  static String baseUrlManager_articles =  ApiConfig.baseUrlManagerBakeryArticles;
-  static String baseUrlManager_bakery_primary_materials = ApiConfig.baseUrlManagerBakeryPrimaryMaterials;
+  static String baseUrlManager_articles =
+      ApiConfig.baseUrlManagerBakeryArticles;
+  static String baseUrlManager_bakery_primary_materials =
+      ApiConfig.baseUrlManagerBakeryPrimaryMaterials;
   final http.Client _client = http.Client();
-
-  void _showErrorSnackbar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-  void _showSuccessSnackbar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
 
   Future<PaginatedUserResponse?> searchemployees(
     BuildContext context, {
@@ -49,7 +36,7 @@ class ManagerService {
       String? token = prefs.getString('auth_token');
 
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return null;
       }
@@ -83,8 +70,7 @@ class ManagerService {
         if (refreshed) {
           return searchemployees(context, page: page, query: query);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
           return null;
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
@@ -95,21 +81,21 @@ class ManagerService {
           if (refreshed) {
             return searchemployees(context, page: page, query: query);
           } else {
-            _showErrorSnackbar(
-                context, AppLocalizations.of(context)!.sessionExpired);
+            await AuthService().expaildtokent(context);
             return null;
           }
         }
-        _showErrorSnackbar(context, message);
+        Customsnackbar().showErrorSnackbar(context, message);
         return null;
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
         return null;
       }
     } catch (e) {
       if (test200 == 0) {
-        _showErrorSnackbar(context, AppLocalizations.of(context)!.networkError);
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.networkError);
       }
       return null;
     }
@@ -121,7 +107,7 @@ class ManagerService {
       String? token = prefs.getString('auth_token');
 
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return;
       }
@@ -136,15 +122,18 @@ class ManagerService {
       );
 
       if (response.statusCode == 200) {
-        _showSuccessSnackbar(
+        Customsnackbar().showSuccessSnackbar(
             context, AppLocalizations.of(context)!.roleUpdated);
+      } else if (response.statusCode == 422) {
+        final jsonResponse = jsonDecode(await response.body);
+
+        Customsnackbar().showErrorSnackbar(context, jsonResponse['message']);
       } else if (response.statusCode == 405) {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
           return updateUserRole(userId, role, context);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
           return;
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
@@ -155,18 +144,18 @@ class ManagerService {
           if (refreshed) {
             return updateUserRole(userId, role, context);
           } else {
-            _showErrorSnackbar(
-                context, AppLocalizations.of(context)!.sessionExpired);
+            await AuthService().expaildtokent(context);
             return;
           }
         }
-        _showErrorSnackbar(context, message);
+        Customsnackbar().showErrorSnackbar(context, message);
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
       }
     } catch (e) {
-      _showErrorSnackbar(context, AppLocalizations.of(context)!.networkError);
+      Customsnackbar().showErrorSnackbar(
+          context, AppLocalizations.of(context)!.networkError);
     }
   }
 
@@ -182,7 +171,7 @@ class ManagerService {
       String? myBakery = prefs.getString('my_bakery');
 
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return null;
       }
@@ -222,8 +211,7 @@ class ManagerService {
               page: page, query: query); // Retry with same query
         } else {
           // Refresh failed, show error
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
           return null;
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
@@ -234,21 +222,21 @@ class ManagerService {
           if (refreshed) {
             return searchProducts(context, page: page, query: query);
           } else {
-            _showErrorSnackbar(
-                context, AppLocalizations.of(context)!.sessionExpired);
+            await AuthService().expaildtokent(context);
             return null;
           }
         }
-        _showErrorSnackbar(context, message);
+        Customsnackbar().showErrorSnackbar(context, message);
         return null;
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
         return null;
       }
     } catch (e) {
       if (test200 == 0) {
-        _showErrorSnackbar(context, AppLocalizations.of(context)!.networkError);
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.networkError);
       }
       return null;
     }
@@ -265,7 +253,7 @@ class ManagerService {
       String? token = prefs.getString('auth_token');
 
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return null;
       }
@@ -299,8 +287,7 @@ class ManagerService {
         if (refreshed) {
           return searchUsers(context, page: page, query: query);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
           return null;
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
@@ -311,34 +298,34 @@ class ManagerService {
           if (refreshed) {
             return searchUsers(context, page: page, query: query);
           } else {
-            _showErrorSnackbar(
-                context, AppLocalizations.of(context)!.sessionExpired);
+            await AuthService().expaildtokent(context);
             return null;
           }
         }
-        _showErrorSnackbar(context, message);
+        Customsnackbar().showErrorSnackbar(context, message);
         return null;
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
         return null;
       }
     } catch (e) {
       if (test200 == 0) {
-        _showErrorSnackbar(context, AppLocalizations.of(context)!.networkError);
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.networkError);
       }
       return null;
     }
   }
 
   Future<void> AddProduct(String name, String price, String type,
-      String picture, BuildContext context) async {
+      String wholesale_price, String picture, BuildContext context) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('auth_token');
 
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return;
       }
@@ -350,6 +337,7 @@ class ManagerService {
 
       request.fields['name'] = name;
       request.fields['price'] = price;
+      request.fields['wholesale_price'] = wholesale_price;
       request.fields['type'] = type;
 
       if (picture.isNotEmpty) {
@@ -368,7 +356,7 @@ class ManagerService {
           ));
         }
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.requiredImage);
         return;
       }
@@ -376,15 +364,19 @@ class ManagerService {
       final response = await request.send();
 
       if (response.statusCode == 201) {
-        _showSuccessSnackbar(
+        Customsnackbar().showSuccessSnackbar(
             context, AppLocalizations.of(context)!.productAdded);
+      } else if (response.statusCode == 422) {
+        final jsonResponse = jsonDecode(await response.stream.bytesToString());
+
+        Customsnackbar().showErrorSnackbar(context, jsonResponse['message']);
       } else if (response.statusCode == 405) {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
-          return AddProduct(name, price, type, picture, context);
+          return AddProduct(
+              name, price, type, wholesale_price, picture, context);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(await response.stream.bytesToString());
@@ -392,32 +384,39 @@ class ManagerService {
         if (message == 'Unauthenticated.') {
           bool refreshed = await AuthService().refreshToken();
           if (refreshed) {
-            return AddProduct(name, price, type, picture, context);
+            return AddProduct(
+                name, price, type, wholesale_price, picture, context);
           } else {
-            _showErrorSnackbar(
-                context, AppLocalizations.of(context)!.sessionExpired);
+            await AuthService().expaildtokent(context);
           }
         } else {
-          _showErrorSnackbar(context, message);
+          Customsnackbar().showErrorSnackbar(context, message);
         }
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
       }
     } catch (error) {
-      _showErrorSnackbar(
+      Customsnackbar().showErrorSnackbar(
           context, '${AppLocalizations.of(context)!.errorOccurred}: $error');
     }
   }
 
-  Future<void> updateProduct(int id, String name, String price, String type,
-      String picture, String oldPicture, BuildContext context) async {
+  Future<void> updateProduct(
+      int id,
+      String name,
+      String price,
+      String type,
+      String wholesale_price,
+      String picture,
+      String oldPicture,
+      BuildContext context) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('auth_token');
 
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return;
       }
@@ -430,6 +429,7 @@ class ManagerService {
       request.fields['name'] = name;
       request.fields['price'] = price;
       request.fields['type'] = type;
+      request.fields['wholesale_price'] = wholesale_price;
       if (oldPicture != picture) {
         if (picture.isNotEmpty) {
           if (kIsWeb) {
@@ -447,7 +447,7 @@ class ManagerService {
             ));
           }
         } else {
-          _showErrorSnackbar(
+          Customsnackbar().showErrorSnackbar(
               context, AppLocalizations.of(context)!.requiredImage);
           return;
         }
@@ -456,16 +456,19 @@ class ManagerService {
       final response = await request.send();
 
       if (response.statusCode == 200) {
-        _showSuccessSnackbar(
+        Customsnackbar().showSuccessSnackbar(
             context, AppLocalizations.of(context)!.productUpdated);
+      } else if (response.statusCode == 422) {
+        final jsonResponse = jsonDecode(await response.stream.bytesToString());
+
+        Customsnackbar().showErrorSnackbar(context, jsonResponse['message']);
       } else if (response.statusCode == 405) {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
-          return updateProduct(
-              id, name, price, type, picture, oldPicture, context);
+          return updateProduct(id, name, price, type, wholesale_price, picture,
+              oldPicture, context);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(await response.stream.bytesToString());
@@ -474,21 +477,20 @@ class ManagerService {
         if (message == 'Unauthenticated.') {
           bool refreshed = await AuthService().refreshToken();
           if (refreshed) {
-            return updateProduct(
-                id, name, price, type, picture, oldPicture, context);
+            return updateProduct(id, name, price, type, wholesale_price,
+                picture, oldPicture, context);
           } else {
-            _showErrorSnackbar(
-                context, AppLocalizations.of(context)!.sessionExpired);
+            await AuthService().expaildtokent(context);
           }
         } else {
-          _showErrorSnackbar(context, message);
+          Customsnackbar().showErrorSnackbar(context, message);
         }
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
       }
     } catch (error) {
-      _showErrorSnackbar(
+      Customsnackbar().showErrorSnackbar(
           context, '${AppLocalizations.of(context)!.errorOccurred}: $error');
     }
   }
@@ -498,7 +500,7 @@ class ManagerService {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('auth_token');
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return;
       }
@@ -512,15 +514,14 @@ class ManagerService {
       );
 
       if (response.statusCode == 200) {
-        _showSuccessSnackbar(
+        Customsnackbar().showSuccessSnackbar(
             context, AppLocalizations.of(context)!.productDeleted);
       } else if (response.statusCode == 405) {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
           return DeleteProduct(context, id);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(response.body);
@@ -530,18 +531,17 @@ class ManagerService {
           if (refreshed) {
             return DeleteProduct(context, id);
           } else {
-            _showErrorSnackbar(
-                context, AppLocalizations.of(context)!.sessionExpired);
+            await AuthService().expaildtokent(context);
           }
         } else {
-          _showErrorSnackbar(context, message);
+          Customsnackbar().showErrorSnackbar(context, message);
         }
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
       }
     } catch (error) {
-      _showErrorSnackbar(
+      Customsnackbar().showErrorSnackbar(
           context, '${AppLocalizations.of(context)!.errorOccurred}: $error');
     }
   }
@@ -553,7 +553,7 @@ class ManagerService {
       String? idBakery = prefs.getString('my_bakery');
 
       if (token == null || idBakery == '') {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return null;
       }
@@ -577,22 +577,92 @@ class ManagerService {
           if (refreshed) {
             return getBakery(context); // Réessaye avec le nouveau token
           } else {
-            _showErrorSnackbar(
-                context, AppLocalizations.of(context)!.sessionExpired);
+            await AuthService().expaildtokent(context);
             return null;
           }
         } else {
-          _showErrorSnackbar(context, message);
+          Customsnackbar().showErrorSnackbar(context, message);
           return null;
         }
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
         return null;
       }
     } catch (e) {
-      _showErrorSnackbar(context, AppLocalizations.of(context)!.errorOccurred);
+      Customsnackbar().showErrorSnackbar(
+          context, AppLocalizations.of(context)!.errorOccurred);
       return null;
+    }
+  }
+
+  Future<void> updateBakeryLocalization(BuildContext context, int id) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('auth_token');
+
+      if (token == null) {
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.tokenNotFound);
+        return;
+      }
+
+      // Récupérer la position actuelle
+      Position? position = await LocationService.getCurrentPosition();
+      Map<String, String> addressDetails =
+          await LocationService.getAddressFromLatLng(
+              position!.latitude, position.longitude);
+
+      if (addressDetails.containsKey("error")) {
+        print(addressDetails["error"]);
+        Customsnackbar().showErrorSnackbar(context, addressDetails["error"]!);
+        return;
+      }
+      var request = http.MultipartRequest(
+          'POST', Uri.parse('${baseUrl}update_localization/$id'));
+      request.headers['Authorization'] = 'Bearer $token';
+      request.headers['Accept'] = 'application/json';
+
+      request.fields['latitude'] = position.latitude.toString();
+      request.fields['longitude'] = position.longitude.toString();
+      request.fields['street'] = addressDetails["street"]!;
+      request.fields['subAdministrativeArea'] = addressDetails["subAdministrativeArea"]!;
+      request.fields['administrativeArea'] = addressDetails["administrativeArea"]!;
+      final response = await request.send();
+
+      if (response.statusCode == 200) {
+        Customsnackbar().showSuccessSnackbar(
+            context, AppLocalizations.of(context)!.bakeryUpdated);
+      } else if (response.statusCode == 405) {
+        bool refreshed = await AuthService().refreshToken();
+        if (refreshed) {
+          return updateBakeryLocalization(context, id);
+        } else {
+          await AuthService().expaildtokent(context);
+        }
+      } else if (response.statusCode == 422) {
+        final jsonResponse = jsonDecode(await response.stream.bytesToString());
+        Customsnackbar().showErrorSnackbar(context, jsonResponse['message']);
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        final jsonResponse = jsonDecode(await response.stream.bytesToString());
+        String message = jsonResponse['message'] ?? 'Unauthenticated.';
+        if (message == 'Unauthenticated.') {
+          bool refreshed = await AuthService().refreshToken();
+          if (refreshed) {
+            return updateBakeryLocalization(context, id);
+          } else {
+            await AuthService().expaildtokent(context);
+          }
+        } else {
+          Customsnackbar().showErrorSnackbar(context, message);
+        }
+      } else {
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.errorOccurred);
+      }
+    } catch (error) {
+      Customsnackbar().showErrorSnackbar(
+          context, '${AppLocalizations.of(context)!.errorOccurred}: $error');
     }
   }
 
@@ -603,7 +673,7 @@ class ManagerService {
       String? token = prefs.getString('auth_token');
 
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return;
       }
@@ -616,7 +686,6 @@ class ManagerService {
       request.fields['name'] = updatedBakery.name;
       request.fields['email'] = updatedBakery.email;
       request.fields['phone'] = updatedBakery.phone;
-      request.fields['address'] = updatedBakery.address;
       request.fields['opening_hours'] = updatedBakery.openingHours;
       if (oldimage != updatedBakery.image) {
         if (updatedBakery.image!.isNotEmpty) {
@@ -635,7 +704,7 @@ class ManagerService {
             ));
           }
         } else {
-          _showErrorSnackbar(
+          Customsnackbar().showErrorSnackbar(
               context, AppLocalizations.of(context)!.requiredImage);
           return;
         }
@@ -644,16 +713,19 @@ class ManagerService {
       final response = await request.send();
 
       if (response.statusCode == 200) {
-        _showSuccessSnackbar(
+        Customsnackbar().showSuccessSnackbar(
             context, AppLocalizations.of(context)!.bakeryUpdated);
       } else if (response.statusCode == 405) {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
           return updateBakery(context, updatedBakery, oldimage);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
         }
+      } else if (response.statusCode == 422) {
+        final jsonResponse = jsonDecode(await response.stream.bytesToString());
+
+        Customsnackbar().showErrorSnackbar(context, jsonResponse['message']);
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(await response.stream.bytesToString());
         String message = jsonResponse['message'] ?? 'Unauthenticated.';
@@ -662,18 +734,17 @@ class ManagerService {
           if (refreshed) {
             return updateBakery(context, updatedBakery, oldimage);
           } else {
-            _showErrorSnackbar(
-                context, AppLocalizations.of(context)!.sessionExpired);
+            await AuthService().expaildtokent(context);
           }
         } else {
-          _showErrorSnackbar(context, message);
+          Customsnackbar().showErrorSnackbar(context, message);
         }
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
       }
     } catch (error) {
-      _showErrorSnackbar(
+      Customsnackbar().showErrorSnackbar(
           context, '${AppLocalizations.of(context)!.errorOccurred}: $error');
     }
   }
@@ -684,7 +755,7 @@ class ManagerService {
       String? token = prefs.getString('auth_token');
 
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return;
       }
@@ -697,7 +768,6 @@ class ManagerService {
       request.fields['name'] = bakery.name;
       request.fields['email'] = bakery.email;
       request.fields['phone'] = bakery.phone;
-      request.fields['address'] = bakery.address;
       request.fields['opening_hours'] = bakery.openingHours;
       if (bakery.image!.isNotEmpty) {
         if (kIsWeb) {
@@ -715,7 +785,7 @@ class ManagerService {
           ));
         }
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.requiredImage);
         return;
       }
@@ -725,15 +795,18 @@ class ManagerService {
       if (response.statusCode == 201) {
         final jsonResponse = jsonDecode(await response.stream.bytesToString());
         await prefs.setString('my_bakery', jsonResponse['id'].toString());
-        _showSuccessSnackbar(
+        Customsnackbar().showSuccessSnackbar(
             context, AppLocalizations.of(context)!.bakeryAdded);
+      } else if (response.statusCode == 422) {
+        final jsonResponse = jsonDecode(await response.stream.bytesToString());
+
+        Customsnackbar().showErrorSnackbar(context, jsonResponse['message']);
       } else if (response.statusCode == 405) {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
           return createBakery(context, bakery);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(await response.stream.bytesToString());
@@ -743,18 +816,17 @@ class ManagerService {
           if (refreshed) {
             return createBakery(context, bakery);
           } else {
-            _showErrorSnackbar(
-                context, AppLocalizations.of(context)!.sessionExpired);
+            await AuthService().expaildtokent(context);
           }
         } else {
-          _showErrorSnackbar(context, message);
+          Customsnackbar().showErrorSnackbar(context, message);
         }
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
       }
     } catch (error) {
-      _showErrorSnackbar(
+      Customsnackbar().showErrorSnackbar(
           context, '${AppLocalizations.of(context)!.errorOccurred}: $error');
     }
   }
@@ -783,7 +855,7 @@ class ManagerService {
       String? token = prefs.getString('auth_token');
 
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return null;
       }
@@ -821,8 +893,7 @@ class ManagerService {
               query: query); // Retry with same query
         } else {
           // Refresh failed, show error
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
           return null;
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
@@ -833,21 +904,21 @@ class ManagerService {
           if (refreshed) {
             return searchPrimaryMaterial(context, query: query);
           } else {
-            _showErrorSnackbar(
-                context, AppLocalizations.of(context)!.sessionExpired);
+            await AuthService().expaildtokent(context);
             return null;
           }
         }
-        _showErrorSnackbar(context, message);
+        Customsnackbar().showErrorSnackbar(context, message);
         return null;
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
         return null;
       }
     } catch (e) {
       if (test200 == 0) {
-        _showErrorSnackbar(context, AppLocalizations.of(context)!.networkError);
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.networkError);
       }
       return null;
     }
@@ -865,7 +936,7 @@ class ManagerService {
       String? token = prefs.getString('auth_token');
 
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return;
       }
@@ -896,7 +967,7 @@ class ManagerService {
           ));
         }
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.requiredImage);
         return;
       }
@@ -904,16 +975,19 @@ class ManagerService {
       final response = await request.send();
 
       if (response.statusCode == 201) {
-        _showSuccessSnackbar(
+        Customsnackbar().showSuccessSnackbar(
             context, AppLocalizations.of(context)!.primary_material_Added);
+      } else if (response.statusCode == 422) {
+        final jsonResponse = jsonDecode(await response.stream.bytesToString());
+
+        Customsnackbar().showErrorSnackbar(context, jsonResponse['message']);
       } else if (response.statusCode == 405) {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
           return Add_Primary_material(
               name, unit, min_quantity, max_quantity, image, context);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(await response.stream.bytesToString());
@@ -924,18 +998,17 @@ class ManagerService {
             return Add_Primary_material(
                 name, unit, min_quantity, max_quantity, image, context);
           } else {
-            _showErrorSnackbar(
-                context, AppLocalizations.of(context)!.sessionExpired);
+            await AuthService().expaildtokent(context);
           }
         } else {
-          _showErrorSnackbar(context, message);
+          Customsnackbar().showErrorSnackbar(context, message);
         }
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
       }
     } catch (error) {
-      _showErrorSnackbar(
+      Customsnackbar().showErrorSnackbar(
           context, '${AppLocalizations.of(context)!.errorOccurred}: $error');
     }
   }
@@ -954,7 +1027,7 @@ class ManagerService {
       String? token = prefs.getString('auth_token');
 
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return;
       }
@@ -987,7 +1060,7 @@ class ManagerService {
             ));
           }
         } else {
-          _showErrorSnackbar(
+          Customsnackbar().showErrorSnackbar(
               context, AppLocalizations.of(context)!.requiredImage);
           return;
         }
@@ -996,16 +1069,19 @@ class ManagerService {
       final response = await request.send();
 
       if (response.statusCode == 201) {
-        _showSuccessSnackbar(
+        Customsnackbar().showSuccessSnackbar(
             context, AppLocalizations.of(context)!.primary_material_Updated);
+      } else if (response.statusCode == 422) {
+        final jsonResponse = jsonDecode(await response.stream.bytesToString());
+
+        Customsnackbar().showErrorSnackbar(context, jsonResponse['message']);
       } else if (response.statusCode == 405) {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
           return updatePrimary_material(id, name, unit, min_quantity,
               max_quantity, image, oldPicture, context);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(await response.stream.bytesToString());
@@ -1016,18 +1092,17 @@ class ManagerService {
             return updatePrimary_material(id, name, unit, min_quantity,
                 max_quantity, image, oldPicture, context);
           } else {
-            _showErrorSnackbar(
-                context, AppLocalizations.of(context)!.sessionExpired);
+            await AuthService().expaildtokent(context);
           }
         } else {
-          _showErrorSnackbar(context, message);
+          Customsnackbar().showErrorSnackbar(context, message);
         }
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
       }
     } catch (error) {
-      _showErrorSnackbar(
+      Customsnackbar().showErrorSnackbar(
           context, '${AppLocalizations.of(context)!.errorOccurred}: $error');
     }
   }
@@ -1039,7 +1114,7 @@ class ManagerService {
       String? token = prefs.getString('auth_token');
 
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return;
       }
@@ -1056,16 +1131,19 @@ class ManagerService {
       final response = await request.send();
 
       if (response.statusCode == 201) {
-        _showSuccessSnackbar(
+        Customsnackbar().showSuccessSnackbar(
             context, AppLocalizations.of(context)!.primary_material_Updated);
+      } else if (response.statusCode == 422) {
+        final jsonResponse = jsonDecode(await response.stream.bytesToString());
+
+        Customsnackbar().showErrorSnackbar(context, jsonResponse['message']);
       } else if (response.statusCode == 405) {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
           return update_reel_quantity_Primary_material(
               id, reel_quantity, context);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(await response.stream.bytesToString());
@@ -1076,18 +1154,17 @@ class ManagerService {
             return update_reel_quantity_Primary_material(
                 id, reel_quantity, context);
           } else {
-            _showErrorSnackbar(
-                context, AppLocalizations.of(context)!.sessionExpired);
+            await AuthService().expaildtokent(context);
           }
         } else {
-          _showErrorSnackbar(context, message);
+          Customsnackbar().showErrorSnackbar(context, message);
         }
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
       }
     } catch (error) {
-      _showErrorSnackbar(
+      Customsnackbar().showErrorSnackbar(
           context, '${AppLocalizations.of(context)!.errorOccurred}: $error');
     }
   }
@@ -1098,7 +1175,7 @@ class ManagerService {
       String? token = prefs.getString('auth_token');
 
       if (token == null) {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.tokenNotFound);
         return;
       }
@@ -1113,15 +1190,14 @@ class ManagerService {
       );
 
       if (response.statusCode == 200) {
-        _showSuccessSnackbar(
+        Customsnackbar().showSuccessSnackbar(
             context, AppLocalizations.of(context)!.primary_materialDeleted);
       } else if (response.statusCode == 405) {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
           return deletePrimary_material(id, context);
         } else {
-          _showErrorSnackbar(
-              context, AppLocalizations.of(context)!.sessionExpired);
+          await AuthService().expaildtokent(context);
         }
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(response.body);
@@ -1131,18 +1207,17 @@ class ManagerService {
           if (refreshed) {
             return deletePrimary_material(id, context);
           } else {
-            _showErrorSnackbar(
-                context, AppLocalizations.of(context)!.sessionExpired);
+            await AuthService().expaildtokent(context);
           }
         } else {
-          _showErrorSnackbar(context, message);
+          Customsnackbar().showErrorSnackbar(context, message);
         }
       } else {
-        _showErrorSnackbar(
+        Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
       }
     } catch (error) {
-      _showErrorSnackbar(
+      Customsnackbar().showErrorSnackbar(
           context, '${AppLocalizations.of(context)!.errorOccurred}: $error');
     }
   }
