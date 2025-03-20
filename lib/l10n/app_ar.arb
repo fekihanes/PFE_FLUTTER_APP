@@ -140,6 +140,18 @@
     "deadlineBeforeEnd": "يجب أن يكون الموعد النهائي قبل تاريخ الانتهاء",
     "start": "البداية",
     "end": "النهاية",
-    "deadline": "الموعد النهائي"
+    "deadline": "الموعد النهائي",
+    "evaluer": "تقييم",
+    "km": "كم",
+    "open": "مفتوح",
+    "closed": "مغلق",
+    "street": "شارع",
+    "subAdministrativeArea": "منطقة مدينية",
+    "administrativeArea": "مدينة",
+    "searchbakery": "ابحث عن مخبز",
+
+    "total_bakeries": "مجموع المخبزات",
+    "nobakeryFound": "لم يتم العثور على مخبزات."
+
   }
   

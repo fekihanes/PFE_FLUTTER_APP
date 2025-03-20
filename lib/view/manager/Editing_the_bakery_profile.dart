@@ -439,11 +439,11 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
             child: Column(
               children: [
                 if (bakery.street != null && bakery.street != '')
-                  buildAddressRow(Icons.home, "Rue", bakery.street ?? ''),
+                  buildAddressRow(Icons.home, AppLocalizations.of(context)!.street, bakery.street ?? ''),
                 buildAddressRow(
-                    Icons.map, "Sous-zone", bakery.subAdministrativeArea ?? ''),
+                    Icons.map, AppLocalizations.of(context)!.subAdministrativeArea, bakery.subAdministrativeArea ?? ''),
                 buildAddressRow(
-                    Icons.place, "Région", bakery.administrativeArea ?? ''),
+                    Icons.place, AppLocalizations.of(context)!.administrativeArea, bakery.administrativeArea ?? ''),
               ],
             ),
           ),

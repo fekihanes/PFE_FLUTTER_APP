@@ -138,5 +138,18 @@
   "deadlineBeforeEnd": "The deadline must be before the end date",
   "start": "Start",
   "end": "End",
-  "deadline": "Deadline"
+  "deadline": "Deadline",
+  "evaluer": "Evaluate",
+  "km": "Km",
+  "open": "Open",
+  "closed": "Closed",
+  "street": "Street",
+  "subAdministrativeArea": "Neighborhood",
+  "administrativeArea": "City",
+  "searchbakery": "Search bakery",
+
+  "total_bakeries": "Total bakeries",
+  "nobakeryFound": "No bakery found."
+
+
 }

@@ -46,6 +46,7 @@ dependencies:
   geocoding: ^2.0.0
   cached_network_image: ^3.4.1
   flutter_launcher_icons: ^0.14.3
+  flutter_rating_stars: ^1.1.0
 
 flutter_launcher_icons:
   android: "launcher_icon"

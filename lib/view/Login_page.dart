@@ -4,7 +4,7 @@ import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/view/admin/home_page_admin.dart';
 import 'package:flutter_application/view/manager/Editing_the_bakery_profile.dart';
 import 'package:flutter_application/view/manager/home_page_manager.dart';
-import 'package:flutter_application/view/user/home_page_user.dart';
+import 'package:flutter_application/view/user/page_find_bahery.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -26,8 +26,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _passwordConfirmationController =
-      TextEditingController();
+  final TextEditingController _passwordConfirmationController = TextEditingController();
 
   Future<void> _handleAuth() async {
     if (!_formKey.currentState!.validate()) return;
@@ -37,36 +36,25 @@ class _LoginPageState extends State<LoginPage> {
       Map<String, dynamic> result;
 
       if (_isConnexionSelected) {
-        result = await _authService.login(_emailController.text.trim(),
-            _passwordController.text.trim(), context);
+        result = await _authService.login(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+          context,
+        );
       } else {
         result = await _authService.register(
-            _nameController.text.trim(),
-            _phoneController.text.trim(),
-            _emailController.text.trim(),
-            _passwordController.text.trim(),
-            _passwordConfirmationController.text.trim(),
-            context);
+          _nameController.text.trim(),
+          _phoneController.text.trim(),
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+          _passwordConfirmationController.text.trim(),
+          context,
+        );
       }
 
       if (result['success'] && mounted) {
         if (_isConnexionSelected) {
-          SharedPreferences prefs = await SharedPreferences.getInstance();
-          String role = prefs.getString('role') ?? '';
-          if (role == 'admin') {
-            Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (context) => const HomePageAdmin()));
-          } else if (role == 'manager') {
-            Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const EditingTheBakeryProfile()));
-          } else if (role == 'user') {
-            Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (context) => const HomePageUser()));
-          } else {
-            _showSuccessSnackbar("bar nyyyk omk");
-          }
+          _redirectAfterLogin();
         } else {
           _showSuccessSnackbar(AppLocalizations.of(context)!.unverified_email);
         }
@@ -77,6 +65,26 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) _showErrorSnackbar(e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _redirectAfterLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    final role = prefs.getString('role') ?? '';
+    if (!mounted) return;
+
+    switch (role) {
+      case 'admin':
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomePageAdmin()));
+        break;
+      case 'manager':
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const EditingTheBakeryProfile()));
+        break;
+      case 'user':
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PageFindBahery()));
+        break;
+      default:
+        _showSuccessSnackbar("Unknown role");
     }
   }
 
@@ -119,7 +127,7 @@ class _LoginPageState extends State<LoginPage> {
             case 'manager':
               return const HomePageManager();
             case 'user':
-              return const HomePageUser();
+              return const PageFindBahery();
             default:
               return const LoginPage();
           }
@@ -130,7 +138,6 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _forgotPassword() async {
     final email = _emailController.text.trim();
-    print(email);
     if (email.isEmpty) {
       _showErrorSnackbar(AppLocalizations.of(context)!.emailRequired);
       return;
@@ -145,8 +152,7 @@ class _LoginPageState extends State<LoginPage> {
           _showErrorSnackbar(result['error']);
         }
       } catch (e) {
-        _showErrorSnackbar(
-            AppLocalizations.of(context)!.errorSendingLink + e.toString());
+        _showErrorSnackbar(AppLocalizations.of(context)!.errorSendingLink + e.toString());
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
@@ -156,55 +162,132 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final localization = AppLocalizations.of(context)!;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeScreen = screenWidth > 900;
 
     return Scaffold(
       backgroundColor: const Color(0xFFE5E7EB),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildImage(),
-                const SizedBox(height: 20),
-                _buildToggleButtons(localization),
-                const SizedBox(height: 20),
-                if (!_isConnexionSelected) ...[
-                  _buildNameField(localization),
-                  const SizedBox(height: 10),
-                  _buildPhoneField(localization),
-                  const SizedBox(height: 10),
-                ],
-                _buildEmailField(localization),
-                const SizedBox(height: 10),
-                _buildPasswordField(localization),
-                if (!_isConnexionSelected) const SizedBox(height: 10),
-                if (!_isConnexionSelected)
-                  _buildPasswordConfirmationField(localization),
-                const SizedBox(height: 10),
-                if (_isConnexionSelected) _buildForgotPassword(localization),
-                const SizedBox(height: 30),
-                _buildSubmitButton(localization),
-              ],
-            ),
-          ),
+      body: SafeArea(
+        child: Center(
+          child: isLargeScreen 
+              ? _buildDesktopLayout(localization, context)
+              : _buildMobileLayout(localization, context),
         ),
       ),
     );
   }
 
-  Widget _buildImage() {
-    return Image.asset(
-  'assets/images/login_image.png', // Chemin absolu depuis la racine
-  width: MediaQuery.of(context).size.width * 0.8,
-  cacheWidth: 600, // Optimisation pour Android
-  filterQuality: FilterQuality.low,
-  errorBuilder: (context, error, stackTrace) {
-    return Text('Erreur de chargement: $error'); // Debug visuel
-  },
-);
+  Widget _buildDesktopLayout(AppLocalizations localization, BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 1400),
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 60),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: 5,
+            child: _buildImage(context),
+          ),
+          const SizedBox(width: 60),
+          Expanded(
+            flex: 4,
+            child: _buildFormContainer(localization),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(AppLocalizations localization, BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          _buildImage(context),
+          const SizedBox(height: 40),
+          _buildFormContainer(localization),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormContainer(AppLocalizations localization) {
+    return Container(
+      padding: const EdgeInsets.all(30),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Form(
+        key: _formKey,
+        child: _buildFormContent(localization),
+      ),
+    );
+  }
+
+  Widget _buildImage(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+        final maxSize = isLandscape 
+            ? constraints.maxHeight * 0.8 
+            : constraints.maxWidth * 0.9;
+
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: maxSize,
+            maxHeight: maxSize,
+          ),
+          child: Image.asset(
+            'assets/images/login_image.png',
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.low,
+            errorBuilder: (context, error, stackTrace) => Container(
+              color: Colors.grey[100],
+              child: Center(
+                child: Icon(
+                  Icons.image_not_supported,
+                  size: 80,
+                  color: Colors.grey[400],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFormContent(AppLocalizations localization) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildToggleButtons(localization),
+        const SizedBox(height: 30),
+        if (!_isConnexionSelected) ...[
+          _buildNameField(localization),
+          const SizedBox(height: 15),
+          _buildPhoneField(localization),
+          const SizedBox(height: 15),
+        ],
+        _buildEmailField(localization),
+        const SizedBox(height: 15),
+        _buildPasswordField(localization),
+        if (!_isConnexionSelected) const SizedBox(height: 15),
+        if (!_isConnexionSelected) _buildPasswordConfirmationField(localization),
+        const SizedBox(height: 20),
+        if (_isConnexionSelected) _buildForgotPassword(localization),
+        const SizedBox(height: 30),
+        _buildSubmitButton(localization),
+      ],
+    );
   }
 
   Widget _buildToggleButtons(AppLocalizations localization) {
@@ -275,10 +358,8 @@ class _LoginPageState extends State<LoginPage> {
       icon: Icons.lock,
       obscureText: !_isPasswordVisible,
       suffixIcon: IconButton(
-        icon:
-            Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off),
-        onPressed: () =>
-            setState(() => _isPasswordVisible = !_isPasswordVisible),
+        icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off),
+        onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -297,13 +378,8 @@ class _LoginPageState extends State<LoginPage> {
       icon: Icons.lock,
       obscureText: !_isPasswordConfirmationVisible,
       suffixIcon: IconButton(
-        icon: Icon(_isPasswordConfirmationVisible
-            ? Icons.visibility
-            : Icons.visibility_off),
-        onPressed: () => setState(
-          () =>
-              _isPasswordConfirmationVisible = !_isPasswordConfirmationVisible,
-        ),
+        icon: Icon(_isPasswordConfirmationVisible ? Icons.visibility : Icons.visibility_off),
+        onPressed: () => setState(() => _isPasswordConfirmationVisible = !_isPasswordConfirmationVisible),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -351,9 +427,7 @@ class _LoginPageState extends State<LoginPage> {
       child: _isLoading
           ? const CircularProgressIndicator(color: Colors.white)
           : Text(
-              _isConnexionSelected
-                  ? localization.connexion
-                  : localization.inscription,
+              _isConnexionSelected ? localization.connexion : localization.inscription,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,

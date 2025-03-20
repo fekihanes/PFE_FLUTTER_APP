@@ -1,3 +1,6 @@
+import 'package:flutter_application/classes/Paginated/PaginatedDescriptionsResponse.dart';
+import 'dart:convert';
+
 class Bakery {
   final int id;
   final String name;
@@ -9,10 +12,15 @@ class Bakery {
   final String phone;
   final String email;
   final String? image;
-  final String openingHours;
+  final String openingHours; // Modifié pour flexibilité
   final int managerId;
   final DateTime createdAt;
   final DateTime updatedAt;
+  double? distance;
+  double? avgRating;
+  int? ratingsCount;
+   PaginatedDescriptionsResponse? descriptions;
+
 
   Bakery({
     required this.id,
@@ -24,34 +32,51 @@ class Bakery {
     this.longitude,
     required this.phone,
     required this.email,
-    required this.image,
+    this.image,
     required this.openingHours,
     required this.managerId,
     required this.createdAt,
     required this.updatedAt,
+    this.distance,
+    this.avgRating,
+    this.ratingsCount,
+    this.descriptions
   });
 
-  // From JSON
   factory Bakery.fromJson(Map<String, dynamic> json) {
     return Bakery(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      longitude: json['longitude'] ?? '',
-      latitude: json['latitude'] ?? '',
-      administrativeArea: json['administrativeArea'] ?? '',
-      street: json['street'] ?? '',
-      subAdministrativeArea: json['subAdministrativeArea'] ?? '',
-      phone: json['phone'] ?? '',
-      email: json['email'] ?? '',
-      image: json['image'],
-      openingHours: json['opening_hours'] ?? '',
-      managerId: json['manager_id'] ?? 0,
-      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updated_at'] ?? '') ?? DateTime.now(),
+      id: json['id'] as int? ?? 0,
+      name: (json['name'] ?? '') as String,
+      longitude: (json['longitude'] ?? '') as String,
+      latitude: (json['latitude'] ?? '') as String,
+      administrativeArea: (json['administrativeArea'] ?? '') as String,
+      street: json['street'] as String?,
+      subAdministrativeArea: (json['subAdministrativeArea'] ?? '') as String,
+      phone: (json['phone'] ?? '') as String,
+      email: (json['email'] ?? '') as String,
+      image: json['image'] as String?,
+    openingHours: json['opening_hours'] ?? '',
+      managerId: (json['manager_id'] ?? 0) as int,
+      createdAt: DateTime.parse(json['created_at'] as String? ?? DateTime.now().toString()),
+      updatedAt: DateTime.parse(json['updated_at'] as String? ?? DateTime.now().toString()),
+      distance: _safeParseDouble(json['distance']),
+      avgRating: _safeParseDouble(json['avg_rating']),
+      ratingsCount: json['ratings_count'] as int?,
+      descriptions: json['descriptions'] != null ? PaginatedDescriptionsResponse.fromJson(json['descriptions']) : null
     );
   }
 
-  // To JSON
+static double? _safeParseDouble(dynamic value) {
+  if (value == null) return null;
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is String) {
+    // Gère les strings avec format numérique
+    return double.tryParse(value.replaceAll(RegExp(r'[^0-9.]'), ''));
+  }
+  return null;
+}
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -71,7 +96,6 @@ class Bakery {
     };
   }
 
-  // Copy with
   Bakery copyWith({
     int? id,
     String? name,
@@ -83,17 +107,19 @@ class Bakery {
     String? phone,
     String? email,
     String? image,
-    String? openingHours,
+    dynamic openingHours,
     int? managerId,
     DateTime? createdAt,
     DateTime? updatedAt,
+    double? distance,
+    double? avgRating,
+    int? ratingsCount,
   }) {
     return Bakery(
       id: id ?? this.id,
       name: name ?? this.name,
       street: street ?? this.street,
-      subAdministrativeArea:
-          subAdministrativeArea ?? this.subAdministrativeArea,
+      subAdministrativeArea: subAdministrativeArea ?? this.subAdministrativeArea,
       administrativeArea: administrativeArea ?? this.administrativeArea,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
@@ -104,6 +130,9 @@ class Bakery {
       managerId: managerId ?? this.managerId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      distance: distance ?? this.distance,
+      avgRating: avgRating ?? this.avgRating,
+      ratingsCount: ratingsCount ?? this.ratingsCount,
     );
   }
 }

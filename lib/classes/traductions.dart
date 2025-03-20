@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class Traductions {
-    traductionrole (BuildContext context, String role){
+  traductionrole(BuildContext context, String role) {
     switch (role) {
       case 'caissier':
         return AppLocalizations.of(context)!.caissier;
@@ -20,7 +20,8 @@ class Traductions {
         return AppLocalizations.of(context)!.user;
     }
   }
-    String getTranslatedDay(BuildContext context,String day) {
+
+  String getTranslatedDay(BuildContext context, String day) {
     switch (day) {
       case 'monday':
         return AppLocalizations.of(context)!.monday;
@@ -41,7 +42,7 @@ class Traductions {
     }
   }
 
-   String getTranslatedkey(BuildContext context,String key) {
+  String getTranslatedkey(BuildContext context, String key) {
     switch (key) {
       case 'start':
         return AppLocalizations.of(context)!.start;
@@ -54,5 +55,24 @@ class Traductions {
     }
   }
 
-
+  String getToDayName(BuildContext context, DateTime date) {
+  //     DateTime today = DateTime.now();
+  // print(getEnglishDayName(today));
+    List<String> days = [
+      AppLocalizations.of(context)!.sunday,
+      AppLocalizations.of(context)!.monday,
+      AppLocalizations.of(context)!.tuesday,
+      AppLocalizations.of(context)!.wednesday,
+      AppLocalizations.of(context)!.thursday,
+      AppLocalizations.of(context)!.friday,
+      AppLocalizations.of(context)!.saturday
+    ];
+    return days[date.weekday % 7]; // % 7 pour que Dimanche soit bien indexé à 0
+  }
+  String getEnglishDayName(DateTime date) {
+  List<String> days = [
+    "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"
+  ];
+  return days[date.weekday % 7]; // % 7 pour que Dimanche soit bien indexé à 0
+}
 }

@@ -3,12 +3,13 @@ import 'package:flutter_application/l10n/l10n.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/view/login_page.dart';
 import 'package:flutter_application/view/admin/home_page_admin.dart';
-import 'package:flutter_application/view/user/home_page_user.dart';
+import 'package:flutter_application/view/user/page_find_bahery.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_application/view/manager/editing_the_bakery_profile.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:geolocator/geolocator.dart';
 
 // Configuration multi-plateforme
 ValueNotifier<Locale> localeNotifier =
@@ -24,11 +25,22 @@ Future<void> main() async {
 
     localeNotifier.value =
         L10n.all.contains(Locale(language)) ? Locale(language) : defaultLocale;
+
+    await _requestLocationPermission();
   } catch (e) {
     localeNotifier.value = const Locale('en');
   }
 
   runApp(const MyApp());
+}
+
+Future<void> _requestLocationPermission() async {
+  if (!kIsWeb) {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -46,7 +58,7 @@ class MyApp extends StatelessWidget {
         case 'manager':
           return const EditingTheBakeryProfile();
         case 'user':
-          return const HomePageUser();
+          return const PageFindBahery();
         default:
           return const LoginPage();
       }

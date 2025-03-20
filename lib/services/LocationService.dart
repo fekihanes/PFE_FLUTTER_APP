@@ -66,12 +66,14 @@ class LocationService {
       if (placemarks.isEmpty) return {'error': 'Aucune adresse trouvée'};
 
       final place = placemarks.first;
-      return {
-        'street': place.street ?? '',
-        'subAdministrativeArea': place.subAdministrativeArea ?? '',
-        'administrativeArea': place.administrativeArea ?? '',
-        // 'country': place.country ?? '',
-      };
+      // return {
+      //   'street': place.street ?? '',
+      //   'subAdministrativeArea': place.subAdministrativeArea ?? '',
+      //   'administrativeArea': place.administrativeArea ?? '',
+      //   // 'country': place.country ?? '',
+      // };
+       return await _getWebAddress(lat, lng);
+
     } catch (e) {
       return {'error': _handleGeocodingError(e)};
     }

@@ -137,7 +137,18 @@
   "deadlineBeforeEnd": "La date limite doit être avant la date de fin",
   "start": "Démarrer",
   "end": "Fin",
-  "deadline": "Date Limite"
+  "deadline": "Date Limite",
+  "evaluer": "Evaluer",
+  "km": "Km",
+  "open": "Ouvert",
+  "closed": "Fermer",
+  "street": "Rue",
+  "subAdministrativeArea": "Quartier",
+  "administrativeArea": "Ville",
+  "searchbakery": "Rechercher une boulangerie",
 
+
+  "total_bakeries": "Total des boulangeries",
+  "nobakeryFound": "Aucune boulangerie trouvée"
 
 }
