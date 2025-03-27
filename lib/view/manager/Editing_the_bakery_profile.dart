@@ -6,6 +6,7 @@ import 'package:flutter_application/classes/traductions.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
 import 'package:flutter_application/custom_widgets/CustomTextField.dart';
 import 'package:flutter_application/custom_widgets/ImageInput.dart';
+import 'package:flutter_application/custom_widgets/NotificationIcon.dart';
 import 'package:flutter_application/services/manager/manager_service.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -27,7 +28,6 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
   String? oldimage;
   Uint8List? _webImage;
   Map<String, dynamic> _openingHours = {};
-
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -257,6 +257,9 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
               color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: Colors.white,
+        // actions:  const [
+        //   NotificationIcon(),
+        // ],
       ),
       drawer: const CustomDrawerManager(),
       body: bakery == null
@@ -297,7 +300,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
         onImageSelected: _setImage,
         initialImage: bakery?.image,
         width: MediaQuery.of(context).size.width * 0.8,
-        height: 200,
+        height: MediaQuery.of(context).size.height * 0.4,
       ),
     );
   }
@@ -439,11 +442,18 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
             child: Column(
               children: [
                 if (bakery.street != null && bakery.street != '')
-                  buildAddressRow(Icons.home, AppLocalizations.of(context)!.street, bakery.street ?? ''),
+                  buildAddressRow(
+                      Icons.home,
+                      AppLocalizations.of(context)!.street,
+                      bakery.street ?? ''),
                 buildAddressRow(
-                    Icons.map, AppLocalizations.of(context)!.subAdministrativeArea, bakery.subAdministrativeArea ?? ''),
+                    Icons.map,
+                    AppLocalizations.of(context)!.subAdministrativeArea,
+                    bakery.subAdministrativeArea ?? ''),
                 buildAddressRow(
-                    Icons.place, AppLocalizations.of(context)!.administrativeArea, bakery.administrativeArea ?? ''),
+                    Icons.place,
+                    AppLocalizations.of(context)!.administrativeArea,
+                    bakery.administrativeArea ?? ''),
               ],
             ),
           ),
@@ -649,129 +659,136 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFFFB8C00),
+          Expanded(
+            // Ajout d'Expanded pour éviter l'overflow
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFFB8C00),
+              ),
+              onPressed: _isSaving
+                  ? null
+                  : () async {
+                      setState(() {
+                        _isSaving = true;
+                      });
+
+                      if (_formKey.currentState?.validate() ?? false) {
+                        if (_openingHours.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(AppLocalizations.of(context)!
+                                  .requiredOpeningHours),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          setState(() {
+                            _isSaving = false;
+                          });
+                          return;
+                        }
+                        if (!_validateOpeningHours()) {
+                          setState(() {
+                            _isSaving = false;
+                          });
+                          return;
+                        }
+
+                        if (bakery!.id == -1 &&
+                            (_imagePath?.isEmpty ?? true) &&
+                            _webImage == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  AppLocalizations.of(context)!.requiredImage),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          setState(() {
+                            _isSaving = false;
+                          });
+                          return;
+                        }
+
+                        String image = _imagePath ?? '';
+                        if (kIsWeb && _webImage != null) {
+                          image = base64Encode(_webImage!);
+                        }
+
+                        Bakery updatedBakery = Bakery(
+                          id: bakery!.id,
+                          name: _nameController.text,
+                          email: _emailController.text,
+                          phone: _phoneController.text,
+                          image: image,
+                          openingHours: jsonEncode(_openingHours),
+                          managerId: bakery!.managerId,
+                          createdAt: bakery!.createdAt,
+                          updatedAt: DateTime.now(),
+                        );
+
+                        try {
+                          if (bakery!.id == -1) {
+                            await ManagerService()
+                                .createBakery(context, updatedBakery);
+                            fetchData();
+                          } else {
+                            await ManagerService().updateBakery(
+                                context, updatedBakery, oldimage!);
+                          }
+                        } catch (e) {
+                          print('Error updating bakery: $e');
+                        }
+
+                        setState(() {
+                          _isSaving = false;
+                        });
+                      }
+                    },
+              child: _isSaving
+                  ? CircularProgressIndicator(color: Colors.white)
+                  : Text(
+                      AppLocalizations.of(context)!.save,
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
             ),
-            onPressed: _isSaving
-                ? null
-                : () async {
-                    setState(() {
-                      _isSaving = true;
-                    });
-
-                    if (_formKey.currentState?.validate() ?? false) {
-                      if (_openingHours.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(AppLocalizations.of(context)!
-                                .requiredOpeningHours),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        setState(() {
-                          _isSaving = false;
-                        });
-                        return;
-                      }
-                      if (!_validateOpeningHours()) {
-                        setState(() {
-                          _isSaving = false;
-                        });
-                        return;
-                      }
-
-                      if (bakery!.id == -1 &&
-                          (_imagePath?.isEmpty ?? true) &&
-                          _webImage == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                                AppLocalizations.of(context)!.requiredImage),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        setState(() {
-                          _isSaving = false;
-                        });
-                        return;
-                      }
-
-                      String image = _imagePath ?? '';
-                      if (kIsWeb && _webImage != null) {
-                        image = base64Encode(_webImage!);
-                      }
-
-                      Bakery updatedBakery = Bakery(
-                        id: bakery!.id,
-                        name: _nameController.text,
-                        email: _emailController.text,
-                        phone: _phoneController.text,
-                        image: image,
-                        openingHours: jsonEncode(_openingHours),
-                        managerId: bakery!.managerId,
-                        createdAt: bakery!.createdAt,
-                        updatedAt: DateTime.now(),
-                      );
+          ),
+          SizedBox(width: 8), // Ajout d'un espace entre les boutons
+          Expanded(
+            // Ajout d'Expanded ici aussi
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFFB8C00),
+              ),
+              onPressed: _isSaving
+                  ? null
+                  : () async {
+                      setState(() {
+                        _isSaving = true;
+                      });
 
                       try {
-                        if (bakery!.id == -1) {
-                          await ManagerService()
-                              .createBakery(context, updatedBakery);
-                          fetchData();
-                        } else {
-                          await ManagerService()
-                              .updateBakery(context, updatedBakery, oldimage!);
-                        }
-                      } catch (e) {
-                        print('Error updating bakery: $e');
-                      }
+                        await ManagerService()
+                            .updateBakeryLocalization(context, bakery!.id);
+                      } catch (e) {}
 
                       setState(() {
                         _isSaving = false;
                       });
-                    }
-                  },
-            child: _isSaving
-                ? CircularProgressIndicator(color: Colors.white)
-                : Text(
-                    AppLocalizations.of(context)!.save,
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white),
-                  ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFFFB8C00),
+                      fetchData();
+                    },
+              child: _isSaving
+                  ? CircularProgressIndicator(color: Colors.white)
+                  : Text(
+                      AppLocalizations.of(context)!.save_new_localization,
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
             ),
-            onPressed: _isSaving
-                ? null
-                : () async {
-                    setState(() {
-                      _isSaving = true;
-                    });
-
-                    try {
-                      await ManagerService()
-                          .updateBakeryLocalization(context, bakery!.id);
-                    } catch (e) {}
-
-                    setState(() {
-                      _isSaving = false;
-                    });
-                    fetchData();
-                  },
-            child: _isSaving
-                ? CircularProgressIndicator(color: Colors.white)
-                : Text(
-                    AppLocalizations.of(context)!.save_new_localization,
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white),
-                  ),
           ),
         ],
       );

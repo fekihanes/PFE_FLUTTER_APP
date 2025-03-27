@@ -12,7 +12,7 @@ class Product {
   String? description;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final Bakery bakery; // Added bakery object
+   Bakery ?bakery;
 
   // Constructor
   Product({
@@ -27,14 +27,18 @@ class Product {
     required this.description,
     required this.createdAt,
     required this.updatedAt,
-    required this.bakery, // Added bakery
+     this.bakery, // Added bakery
   });
 
   // FromJson: Create an instance from a map (usually from a server response)
   factory Product.fromJson(Map<String, dynamic> json) {
-    var bakeryJson = json['bakery'] as Map<String, dynamic>;
-    Bakery bakery = Bakery.fromJson(bakeryJson);
-
+    var bakeryJson = json['bakery']; // Handle null as Map<String, dynamic>;
+    Bakery? bakery;
+    if (bakeryJson != null) {
+      bakery = Bakery.fromJson(bakeryJson);
+    } else {
+      bakery = null;
+    }
     return Product(
       id: json['id'] ?? 0,
       bakeryId: json['bakery_id'] ?? 0,
@@ -65,7 +69,7 @@ class Product {
       'description': description,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
-      'bakery': bakery.toJson(), // Convert bakery to JSON
+      'bakery': bakery?.toJson(), // Convert bakery to JSON
     };
   }
 

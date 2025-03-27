@@ -9,7 +9,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AuthService {
   final String baseUrl = ApiConfig.baseUrl;
   final http.Client _client = http.Client();
-  
 
   Future<Map<String, dynamic>> login(
       String email, String password, context) async {
@@ -80,6 +79,7 @@ class AuthService {
       await prefs.setString('refresh_token', loginData['refresh_token'] ?? '');
       await prefs.setString('user_picture', userData['user_picture'] ?? '');
       await prefs.setString('phone', userData['phone'] ?? '');
+      await prefs.setString('user_id', userData['id'].toString());
       await prefs.setString('email', userData['email'] ?? '');
       await prefs.setString('name', userData['name'] ?? '');
       await prefs.setString('role', userData['role'] ?? '');
@@ -167,6 +167,7 @@ class AuthService {
         await prefs.remove('my_bakery');
         await prefs.remove('phone');
         await prefs.remove('user_picture');
+        await prefs.remove('user_id');
       } else if (response.statusCode == 401) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('refresh_token');
@@ -178,6 +179,7 @@ class AuthService {
         await prefs.remove('my_bakery');
         await prefs.remove('phone');
         await prefs.remove('user_picture');
+        await prefs.remove('user_id');
       } else {
         throw Exception(AppLocalizations.of(context)!.logout_failed);
       }
@@ -302,6 +304,8 @@ class AuthService {
         final userData = json.decode(response.body);
         await prefs.setString('refresh_token', userData['refresh_token']);
         await prefs.setString('user_picture', userData['user_picture']);
+        await prefs.setString('user_id', userData['id'].toString());
+
         await prefs.setString('phone', userData['phone']);
         await prefs.setString('email', userData['email'] ?? '');
         await prefs.setString('name', userData['name'] ?? '');
@@ -319,6 +323,7 @@ class AuthService {
             final prefs = await SharedPreferences.getInstance();
             await prefs.remove('refresh_token');
             await prefs.remove('auth_token');
+            await prefs.remove('user_id');
             await prefs.remove('email');
             await prefs.remove('name');
             await prefs.remove('role');
@@ -360,14 +365,15 @@ class AuthService {
     await prefs.remove('name');
     await prefs.remove('role');
     await prefs.remove('bakery_id');
+    await prefs.remove('user_id');
     await prefs.remove('my_bakery');
     await prefs.remove('phone');
     await prefs.remove('user_picture');
-     Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const LoginPage(),
-        ),
-      );
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LoginPage(),
+      ),
+    );
   }
 }

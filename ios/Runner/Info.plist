@@ -66,5 +66,11 @@
 	<string>Nous avons besoin de votre localisation pour afficher votre adresse.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Nous avons besoin de votre localisation en arrière-plan.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+    <string>fetch</string>
+    <string>processing</string>
+	</array>
+
 </dict>
 </plist>

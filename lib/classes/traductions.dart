@@ -75,4 +75,6 @@ class Traductions {
   ];
   return days[date.weekday % 7]; // % 7 pour que Dimanche soit bien indexé à 0
 }
+
+
 }

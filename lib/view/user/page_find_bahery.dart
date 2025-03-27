@@ -9,6 +9,8 @@ import 'package:flutter_application/services/LocationService.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/services/users/bakeries_service.dart';
 import 'package:flutter_application/view/Login_page.dart';
+import 'package:flutter_application/view/user/passe_commandes/page_Accueil_bakery.dart';
+import 'package:flutter_application/view/user/page_rating_bakery.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
@@ -68,12 +70,15 @@ class _PageFindBaheryState extends State<PageFindBahery> {
       setState(() {
         latitude = position.latitude.toString();
         longitude = position.longitude.toString();
-        subAdministrativeArea = addressDetails["subAdministrativeArea"] ?? 'Unknown area';
-        administrativeArea = addressDetails["administrativeArea"] ?? 'Unknown region';
+        subAdministrativeArea =
+            addressDetails["subAdministrativeArea"] ?? 'Unknown area';
+        administrativeArea =
+            addressDetails["administrativeArea"] ?? 'Unknown region';
       });
     } catch (e) {
       if (mounted) {
-        Customsnackbar().showErrorSnackbar(context, "Location error: ${e.toString()}");
+        Customsnackbar()
+            .showErrorSnackbar(context, "Location error: ${e.toString()}");
       }
     }
   }
@@ -171,7 +176,8 @@ class _PageFindBaheryState extends State<PageFindBahery> {
                     children: [
                       Expanded(
                         child: SingleChildScrollView(
-                          padding: EdgeInsets.all(constraints.maxWidth * 0.04),
+                          padding: EdgeInsets.all(32),
+                          // padding: EdgeInsets.all(constraints.maxWidth * 0.04),
                           child: Column(
                             children: [
                               _buildContbakeries(),
@@ -192,75 +198,87 @@ class _PageFindBaheryState extends State<PageFindBahery> {
     );
   }
 
-Widget _buildbakeryList(BoxConstraints constraints) {
-  if (isLoading) {
-    return const Center(
-      heightFactor: 15,
-      child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFB8C00))),
-    );
-  }
+  Widget _buildbakeryList(BoxConstraints constraints) {
+    if (isLoading) {
+      return const Center(
+        heightFactor: 15,
+        child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFB8C00))),
+      );
+    }
 
-  if (bakeries.isEmpty) {
-    return Center(
-      heightFactor: 20,
-      child: Text(
-        AppLocalizations.of(context)!.nobakeryFound,
-        style: TextStyle(
-          fontSize: constraints.maxWidth < 600 ? 16 : 18,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey,
-        ),
-      ),
-    );
-  }
-
-  int crossAxisCount;
-  double childAspectRatio;
-
-  // Déterminer le crossAxisCount en fonction de la largeur de l'écran
-  if (constraints.maxWidth < 600) {
-    crossAxisCount = 1; // Téléphone
-    childAspectRatio = (constraints.maxWidth / 1) / (constraints.maxHeight * 0.53);
-  } else if (constraints.maxWidth < 900) {
-    crossAxisCount = 2; // Tablette
-    childAspectRatio = (constraints.maxWidth / 2) / (constraints.maxHeight * 0.55);
-  } else if (constraints.maxWidth < 1200) {
-    crossAxisCount = 3; // Web
-    childAspectRatio = (constraints.maxWidth / 3) / (constraints.maxHeight * 0.58);
-  } else {
-    crossAxisCount = 4; // TV
-    childAspectRatio = (constraints.maxWidth / 4) / (constraints.maxHeight * 0.62);
-  }
-
-  // S'assurer que le childAspectRatio reste dans des limites raisonnables
-  childAspectRatio = childAspectRatio.clamp(0.5, 1.5);
-
-  return GridView.builder(
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: crossAxisCount,
-      crossAxisSpacing: constraints.maxWidth * 0.02,
-      mainAxisSpacing: constraints.maxHeight * 0.015,
-      childAspectRatio: childAspectRatio, // Utiliser la valeur calculée dynamiquement
-    ),
-    itemCount: bakeries.length,
-    itemBuilder: (context, index) {
-      return Container(
-        padding: EdgeInsets.all(constraints.maxWidth * 0.03),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
-          borderRadius: BorderRadius.circular(10),
-          color: Colors.white,
-        ),
-        child: GestureDetector(
-          onTap: () => print("object"),
-          child: _ShowinfoBakery(bakeries[index], constraints),
+    if (bakeries.isEmpty) {
+      return Center(
+        heightFactor: 20,
+        child: Text(
+          AppLocalizations.of(context)!.nobakeryFound,
+          style: TextStyle(
+            fontSize: constraints.maxWidth < 600 ? 16 : 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey,
+          ),
         ),
       );
-    },
-  );
-}
+    }
+
+    int crossAxisCount;
+    double childAspectRatio;
+
+    // Déterminer le crossAxisCount en fonction de la largeur de l'écran
+    if (constraints.maxWidth < 600) {
+      crossAxisCount = 1; // Téléphone
+      childAspectRatio =
+          (constraints.maxWidth / 1) / (constraints.maxHeight * 0.58);
+    } else if (constraints.maxWidth < 900) {
+      crossAxisCount = 2; // Tablette
+      childAspectRatio =
+          (constraints.maxWidth / 2) / (constraints.maxHeight * 0.58);
+    } else if (constraints.maxWidth < 1200) {
+      crossAxisCount = 3; // Web
+      childAspectRatio =
+          (constraints.maxWidth / 3) / (constraints.maxHeight * 0.6);
+    } else {
+      crossAxisCount = 4; // TV
+      childAspectRatio =
+          (constraints.maxWidth / 4) / (constraints.maxHeight * 0.6);
+    }
+
+    // S'assurer que le childAspectRatio reste dans des limites raisonnables
+    childAspectRatio = childAspectRatio.clamp(0.5, 1.5);
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: constraints.maxWidth * 0.02,
+        mainAxisSpacing: constraints.maxHeight * 0.015,
+        childAspectRatio:
+            childAspectRatio, // Utiliser la valeur calculée dynamiquement
+      ),
+      itemCount: bakeries.length,
+      itemBuilder: (context, index) {
+        return Container(
+          padding: EdgeInsets.all(16.0),
+          // padding: EdgeInsets.all(constraints.maxWidth * 0.03),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey),
+            borderRadius: BorderRadius.circular(10),
+            color: Colors.white,
+          ),
+          child: GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) =>
+                      PageAccueilBakery(bakery: bakeries[index], products_selected: {},)),
+            ),
+            child: _ShowinfoBakery(bakeries[index], constraints),
+          ),
+        );
+      },
+    );
+  }
 
   bool showetap(String start, String end) {
     TimeOfDay startTime = _parseTimeOfDay(start);
@@ -307,17 +325,26 @@ Widget _buildbakeryList(BoxConstraints constraints) {
               top: 5,
               right: 5,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Smaller padding
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 4), // Smaller padding
                 decoration: BoxDecoration(
                   color: isOpen ? Colors.green : Colors.red,
                   borderRadius: BorderRadius.circular(6),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 2, offset: const Offset(1, 1)),
+                    BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 2,
+                        offset: const Offset(1, 1)),
                   ],
                 ),
                 child: Text(
-                  isOpen ? AppLocalizations.of(context)!.open : AppLocalizations.of(context)!.closed,
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                  isOpen
+                      ? AppLocalizations.of(context)!.open
+                      : AppLocalizations.of(context)!.closed,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -339,12 +366,14 @@ Widget _buildbakeryList(BoxConstraints constraints) {
             padding: const EdgeInsets.symmetric(vertical: 4.0),
             child: Row(
               children: [
-                const Icon(Icons.location_on, color: Colors.grey, size: 16), // Smaller icon
+                const Icon(Icons.location_on,
+                    color: Colors.grey, size: 16), // Smaller icon
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     bakery.street ?? '',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey), // Smaller font
+                    style: const TextStyle(
+                        fontSize: 12, color: Colors.grey), // Smaller font
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                   ),
@@ -357,7 +386,8 @@ Widget _buildbakeryList(BoxConstraints constraints) {
           children: [
             RatingStars(
               value: bakery.avgRating ?? 0.0,
-              starBuilder: (index, color) => Icon(Icons.star, color: color, size: 14), // Smaller stars
+              starBuilder: (index, color) =>
+                  Icon(Icons.star, color: color, size: 14), // Smaller stars
               starCount: 5,
               starSize: 14,
               valueLabelVisibility: false, // Hide value label to save space
@@ -373,16 +403,32 @@ Widget _buildbakeryList(BoxConstraints constraints) {
             ),
             const Spacer(),
             ElevatedButton(
-              onPressed: () => print('evaluer'),
-              child: const Text(
-                'Évaluer', // Shortened text
-                style: TextStyle(fontSize: 12, color: Colors.white),
+              onPressed: () async{
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PageRatingBakery(bakery: bakery),
+                  ),
+                );
+                _initializeData();
+              },
+              child: Row(
+                children: [
+                  const Icon(Icons.star,
+                      color: Colors.white, size: 14), // Smaller icon
+                  const Text(
+                    'Évaluer', // Shortened text
+                    style: TextStyle(fontSize: 12, color: Colors.white),
+                  ),
+                ],
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFB8C00),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // Smaller button
-                minimumSize: const Size(0, 0), // Allow smaller size
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 6, vertical: 2), // Smaller button
+                // minimumSize: const Size(0, 0), // Allow smaller size
               ),
             ),
           ],
@@ -395,7 +441,8 @@ Widget _buildbakeryList(BoxConstraints constraints) {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.access_time, color: Colors.grey, size: 14), // Smaller icon
+                const Icon(Icons.access_time,
+                    color: Colors.grey, size: 14), // Smaller icon
                 const SizedBox(width: 4),
                 Text(
                   "${getOpeningHours(bakery, 'start') ?? '-'} - ${getOpeningHours(bakery, 'end') ?? '-'}",
@@ -406,7 +453,8 @@ Widget _buildbakeryList(BoxConstraints constraints) {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.location_city, color: Colors.grey, size: 14), // Smaller icon
+                const Icon(Icons.location_city,
+                    color: Colors.grey, size: 14), // Smaller icon
                 const SizedBox(width: 4),
                 Text(
                   '${bakery.distance?.toStringAsFixed(2) ?? '-'} km',
@@ -422,7 +470,8 @@ Widget _buildbakeryList(BoxConstraints constraints) {
 
   String? getOpeningHours(Bakery bakery, String key) {
     try {
-      Map<String, dynamic> storedHours = jsonDecode(bakery.openingHours ?? '{}');
+      Map<String, dynamic> storedHours =
+          jsonDecode(bakery.openingHours ?? '{}');
       DateTime now = DateTime.now();
       String searchDay = Traductions().getEnglishDayName(now);
       late Map<String, dynamic> openingHours = {};
@@ -435,7 +484,8 @@ Widget _buildbakeryList(BoxConstraints constraints) {
         };
       });
 
-      if (openingHours.containsKey(searchDay) && openingHours[searchDay]!.containsKey(key)) {
+      if (openingHours.containsKey(searchDay) &&
+          openingHours[searchDay]!.containsKey(key)) {
         return openingHours[searchDay][key];
       } else {
         return null;
@@ -540,7 +590,8 @@ Widget _buildbakeryList(BoxConstraints constraints) {
       padding: const EdgeInsets.all(8.0),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: pageLinks),
+        child: Row(
+            mainAxisAlignment: MainAxisAlignment.center, children: pageLinks),
       ),
     );
   }
@@ -550,7 +601,13 @@ Widget _buildbakeryList(BoxConstraints constraints) {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10.0),
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.2), spreadRadius: 2, blurRadius: 5, offset: const Offset(0, 3))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.grey.withOpacity(0.2),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: const Offset(0, 3))
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
@@ -563,7 +620,8 @@ Widget _buildbakeryList(BoxConstraints constraints) {
               decoration: InputDecoration(
                 labelText: AppLocalizations.of(context)!.searchbakery,
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0)),
               ),
             ),
             const SizedBox(height: 10),
@@ -587,7 +645,8 @@ Widget _buildbakeryList(BoxConstraints constraints) {
                     : Row(
                         children: [
                           Expanded(
-                            child: _buildDropdown(subAdministrativeArea, (value) {
+                            child:
+                                _buildDropdown(subAdministrativeArea, (value) {
                               setState(() => subAdministrativeArea = value!);
                               fetchbakeries();
                             }, constraints),
@@ -609,7 +668,8 @@ Widget _buildbakeryList(BoxConstraints constraints) {
     );
   }
 
-  Widget _buildDropdown(String? value, Function(String?) onChanged, BoxConstraints constraints) {
+  Widget _buildDropdown(
+      String? value, Function(String?) onChanged, BoxConstraints constraints) {
     return DropdownButtonFormField<String>(
       value: value,
       onChanged: onChanged,
@@ -617,7 +677,8 @@ Widget _buildbakeryList(BoxConstraints constraints) {
         if (value != null)
           DropdownMenuItem(value: value, child: Text(value))
         else
-          const DropdownMenuItem(value: 'Loading...', child: Text('Loading...')),
+          const DropdownMenuItem(
+              value: 'Loading...', child: Text('Loading...')),
       ],
       decoration: InputDecoration(
         filled: true,
@@ -633,7 +694,12 @@ Widget _buildbakeryList(BoxConstraints constraints) {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.3), spreadRadius: 2, blurRadius: 5)],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5)
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -641,13 +707,17 @@ Widget _buildbakeryList(BoxConstraints constraints) {
           Flexible(
             child: Text(
               AppLocalizations.of(context)!.total_bakeries,
-              style: const TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(width: 10),
           Text(
             total.toString(),
-            style: const TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+                color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
           ),
         ],
       ),

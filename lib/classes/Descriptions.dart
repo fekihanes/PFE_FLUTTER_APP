@@ -5,20 +5,29 @@ class Descriptions {
   final String? updatedAt;
   final int? userId;
   final UserClass? user;
+  int? rate;
 
   Descriptions({
     this.description,
     this.updatedAt,
     this.userId,
     this.user,
+    this.rate,
   });
 
   factory Descriptions.fromJson(Map<String, dynamic> json) {
     return Descriptions(
-      description: json['description'] as String?,
-      updatedAt: json['updated_at'] as String?,
-      userId: json['user_id'] as int?,
-      user: json['user'] != null ? UserClass.fromJson(json['user']) : null,
+      description: json['description']?.toString(),
+      updatedAt: json['updated_at']?.toString(),
+      userId: json['user_id'] is int
+          ? json['user_id']
+          : int.tryParse(json['user_id'].toString()),
+      user: json['user'] != null && json['user'] is Map<String, dynamic>
+          ? UserClass.fromJson(json['user'])
+          : null,
+      rate: json['rate'] is int
+          ? json['rate']
+          : int.tryParse(json['rate'].toString()),
     );
   }
 
@@ -28,6 +37,7 @@ class Descriptions {
       'updated_at': updatedAt,
       'user_id': userId,
       'user': user?.toJson(),
+      'rate': rate,
     };
   }
 }

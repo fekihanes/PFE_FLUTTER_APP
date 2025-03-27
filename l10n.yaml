@@ -1,3 +1,11 @@
+# The directory where all localization files should reside.
 arb-dir: lib/l10n
+
+# The template ARB file to use as the basis for generating Dart localization and messages files.
 template-arb-file: app_en.arb
+
+# The output file for the generated Dart localization and messages code.
 output-localization-file: app_localizations.dart
+
+# The class name for the generated Dart localization and messages code.
+output-class: AppLocalizations
