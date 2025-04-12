@@ -164,7 +164,7 @@
   "selectTime": "حدد الوقت",
   "deliveryMode": "طريقة التوصيل",
   "delivery": "توصيل",
-  "pickup": "استلام",
+  "pickup": "الاستلام من المتجر",
   "paymentMethod": "طريقة الدفع",
   "cash": "نقدا",
   "creditCard": "بطاقة ائتمان",
@@ -197,5 +197,43 @@
   "deliveryFee": "رسوم التوصيل",
   "notOpenYet": "لم يتم الافتتاح بعد",
   "alreadyClosed":  "مغلق بالفعل",
-  "orderSuccess": "تم تقديم الطلب بنجاح"
+  "orderSuccess": "تم تقديم الطلب بنجاح",
+
+  "notifications": "الاشعارات",
+  "hideDetails": "اخفاء التفاصيل",
+  "viewDetails": "عرض التفاصيل",
+  "products": "المنتجات",
+  "address": "العنوان",
+  "confirm": "تاكيد",
+  "yes": "نعم",
+  "no": "لا",
+  "errorLoadingProducts": "حدث خطاء اثناء تحميل المنتجات.",
+"noProductsFound": "لا توجد منتجات",
+"phoneCallError": "حدث خطاء اثناء الاتصال.",
+"commandeUpdated": "تم تحديث الطلب",
+"confirmAction" : "تاكيد العملية",
+"confirmMessage" : "هل انت متاكد من تاكيد هذا الطلب؟",
+"cancelAction" : "الغاء العملية",
+"cancelMessage" : "هل انت متاكد من الغاء هذا الطلب؟",
+  "noNotifications": "لا توجد اشعارات",
+
+  "notFound": "لم يتم العثور على",
+  "nocommandesFound": "لا توجد طلبات",
+  "paymentstatus" : "حالة الدفع",
+  "completedOrders": "الطلبات المكتملة",
+  "cancelledOrders": "الطلبات الملغاة",
+  "pendingOrders": "الطلبات المعلقة",
+  "stock_management": "ادارة المخزون",
+  "enpreparation": "في التحضير",
+  "invalidQuantity":  "كمية غير صالحة",
+
+
+  "confirmOrderMessage": "هل انت متاكد من تاكيد هذا الطلب؟",
+  "cancelOrder": "الغاء الطلب",
+  "cancelOrderMessage": "هل انت متاكد من الغاء هذا الطلب؟",
+  "statusUpdated": "تم تحديث الحالة بنجاح",
+
+  "stoke": "المخزون",
+  "price": "السعر",
+  "quantity": "الكمية"
 }

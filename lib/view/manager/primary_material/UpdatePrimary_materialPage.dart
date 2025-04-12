@@ -10,6 +10,8 @@ import 'dart:typed_data';
 
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import '../../../services/emloyees/primary_materials.dart';
+
 class UpdateprimaryMaterialPage extends StatefulWidget {
   final PrimaryMaterial primaryMaterial;
 
@@ -58,7 +60,7 @@ class _UpdateprimaryMaterialPageState extends State<UpdateprimaryMaterialPage> {
         image = base64Encode(_webImage!);
       }
 
-      ManagerService().updatePrimary_material(
+      EmployeesPrimaryMaterialService().updatePrimaryMaterial(
         widget.primaryMaterial.id,
         _nameController.text,
         _isUnitSelected ?? '',

@@ -257,9 +257,9 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
               color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: Colors.white,
-        // actions:  const [
-        //   NotificationIcon(),
-        // ],
+        actions:  const [
+           NotificationIcon(),
+        ],
       ),
       drawer: const CustomDrawerManager(),
       body: bakery == null

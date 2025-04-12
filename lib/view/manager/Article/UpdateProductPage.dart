@@ -37,7 +37,7 @@ class _UpdateProductPageState extends State<UpdateProductPage> {
     });
     _nameController = TextEditingController(text: widget.product.name);
     _priceController = TextEditingController(text: widget.product.price.toString());
-    _wholesale_priceController = TextEditingController(text: widget.product.wholesale_price.toString());
+    _wholesale_priceController = TextEditingController(text: widget.product.wholesalePrice.toString());
     _isSaltySelected = widget.product.type == 'Salty';
     _oldImage = widget.product.picture;
     _imagePath = widget.product.picture;

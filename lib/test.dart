@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application/services/websocket/notification_service.dart';
+import 'package:flutter_application/services/websocket/Background_notification_service.dart';
 
 class Test extends StatefulWidget {
   const Test({super.key});
@@ -22,7 +22,7 @@ class _TestState extends State<Test> {
             const Text("Test"),
             ElevatedButton(
               onPressed: () async {
-                await NotificationService.showNotification(
+                await BackgroundNotificationService.showNotification(
                   id: 1,
                   title: "Test Notification",
                   message: "This is a test message",

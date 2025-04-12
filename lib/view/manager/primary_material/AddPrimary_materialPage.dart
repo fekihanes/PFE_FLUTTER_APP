@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_application/custom_widgets/CustomTextField.dart';
 import 'package:flutter_application/custom_widgets/ImageInput.dart';
+import 'package:flutter_application/services/emloyees/primary_materials.dart';
 import 'package:flutter_application/services/manager/manager_service.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -39,7 +40,6 @@ class _AddPrimary_materialPageState extends State<AddPrimary_materialPage> {
       ManagerService().havebakery(context);
     });
   }
-
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       // Vérification supplémentaire pour les quantités
@@ -66,7 +66,7 @@ class _AddPrimary_materialPageState extends State<AddPrimary_materialPage> {
         image = _imagePath!;
       }
 
-      ManagerService().Add_Primary_material(
+      EmployeesPrimaryMaterialService().addPrimaryMaterial(
         _nameController.text,
         _isUnitSelected,
         _quantity_min_Controller.text,

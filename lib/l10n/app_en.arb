@@ -164,7 +164,7 @@
   "selectTime": "Select Time",
   "deliveryMode": "Delivery Mode",
   "delivery": "Delivery",
-  "pickup": "Pickup",
+  "pickup": "In-store pickup",
   "paymentMethod": "Payment Method",
   "cash": "Cash",
   "creditCard": "Credit Card",
@@ -198,5 +198,43 @@
   "closedDay": "Closed day",
   "notOpenYet":   "Not open yet",
   "alreadyClosed": "Already closed",
-  "orderSuccess": "Order passed successfully"
+  "orderSuccess": "Order passed successfully",
+  
+  "notifications": "Notifications",
+  "hideDetails": "Hide details",
+  "viewDetails": "View details",
+  "products": "Products",
+  "address": "Address",
+  "confirm": "Confirm",
+  "yes": "Yes",
+  "no": "No",
+  "errorLoadingProducts": "An error occurred while loading products.",
+"noProductsFound": "No products found",
+"phoneCallError": "An error occurred while making the call.",
+"commandeUpdated": "Order updated",
+"confirmAction" : "Confirm action",
+"confirmMessage" : "Are you sure you want to confirm this order?",
+"cancelAction" : "Cancel action",
+"cancelMessage" : "Are you sure you want to cancel this order?",
+  "noNotifications": "No notifications",
+
+  "notFound": "Not found",
+  "nocommandesFound":  "No orders found",
+  "completedOrders": "Completed Orders",
+  "cancelledOrders": "Cancelled Orders",
+  "pendingOrders": "Pending Orders",
+  "enpreparation": "in preparation",
+  "paymentstatus" : "Payment status",
+  "invalidQuantity": "Invalid quantity",
+
+  "stock_management": "Gestion des stocks",
+
+  "confirmOrderMessage": "Are you sure you want to mark this order as completed?",
+  "cancelOrder": "Cancel Order",
+  "cancelOrderMessage": "Are you sure you want to cancel this order?",
+  "statusUpdated": "Status updated successfully",
+
+  "stoke": "Stock",
+  "price": "Prix",
+  "quantity": "Quantity"
 }

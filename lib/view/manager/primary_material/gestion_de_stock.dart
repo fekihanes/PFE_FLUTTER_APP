@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedPrimaryMaterialResponse.dart';
 import 'package:flutter_application/classes/PrimaryMaterial.dart';
+import 'package:flutter_application/custom_widgets/CustomDrawer_employees.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
+import 'package:flutter_application/services/emloyees/primary_materials.dart';
 import 'package:flutter_application/services/manager/manager_service.dart';
 import 'package:flutter_application/view/manager/primary_material/AddPrimary_materialPage.dart';
 import 'package:flutter_application/view/manager/primary_material/UpdatePrimary_materialPage.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class GestionDeStoke extends StatefulWidget {
   const GestionDeStoke({super.key});
@@ -21,14 +24,16 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
   List<PrimaryMaterial> primaryMaterials = [];
   int total = 0;
   bool isLoading = false;
+  String role = 'manager'; // Default role, change as needed
   final TextEditingController _searchController = TextEditingController();
 
   Future<void> fetchPrimaryMaterial({int page = 1}) async {
+    if (!mounted) return; // Prevent unnecessary rebuilds if the widget is not mounted
     setState(() => isLoading = true);
 
     try {
       PaginatedPrimaryMaterialResponse? response =
-          await ManagerService().searchPrimaryMaterial(
+          await EmployeesPrimaryMaterialService().searchPrimaryMaterial(
         context,
         query: _searchController.text.trim(),
       );
@@ -61,7 +66,9 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      role = prefs.getString('role') ?? 'manager';
       ManagerService().havebakery(context);
       fetchPrimaryMaterial();
     });
@@ -85,7 +92,8 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
         ),
         backgroundColor: Colors.white,
       ),
-      drawer: const CustomDrawerManager(),
+      drawer: role == 'manager' ? const CustomDrawerManager() : const CustomDrawerEmployees(),
+      
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFFFB8C00),
         onPressed: () async {
@@ -395,8 +403,8 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
               ),
             ),
             onPressed: () async {
-              await ManagerService()
-                  .deletePrimary_material(material.id, context);
+              await EmployeesPrimaryMaterialService()
+                  .deletePrimaryMaterial(material.id, context);
               fetchPrimaryMaterial();
               setState(() {
                 primaryMaterials.remove(material);
@@ -487,7 +495,7 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
                   material.reelQuantity += newQuantity;
                 });
 
-                await ManagerService().update_reel_quantity_Primary_material(
+                await EmployeesPrimaryMaterialService().updateReelQuantityPrimaryMaterial(
                     material.id, _quantityController.text, context);
                 Navigator.of(context).pop();
               } else {

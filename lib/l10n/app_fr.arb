@@ -168,7 +168,7 @@
   "selectTime": "Sélectionner l'heure",
   "deliveryMode": "Mode de livraison",
   "delivery": "Livraison",
-  "pickup": "Ramassage",
+  "pickup": "Retrait en magasin",
   "paymentMethod": "Mode de paiement",
   "cash": "Espèces",
   "creditCard": "Carte de crédit",
@@ -202,5 +202,45 @@
   "deliveryFee": "Frais de livraison",
   "notOpenYet": "Pas encore ouvert",
   "alreadyClosed": "Déjà fermé",
-  "orderSuccess": "Commande passée avec succès"
+  "orderSuccess": "Commande passée avec succès",
+
+  "notifications": "Notifications",
+  "hideDetails": "Cacher les détails",
+  "viewDetails": "Voir les détails",
+  "products": "Produits",
+  "address": "Adresse",
+  "confirm": "Confirmer",
+  "errorLoadingProducts": "Une erreur s'est produite lors du chargement des produits.",
+  "noProductsFound": "Aucun produit trouvé",
+  "phoneCallError": "Une erreur s'est produite lors de la prise de appel.",
+  "commandeUpdated": "Commande mise à jour",
+  "yes": "Oui",
+  "no": "Non",
+  "confirmAction" : "Confirmer l'action",
+  "confirmMessage" : "Voulez-vous vraiment confirmer cette commande ?",
+  "cancelAction" : "Annuler l'action",
+  "cancelMessage" : "Voulez-vous vraiment annuler cette commande ?",
+  "noNotifications": "Aucune notification",
+
+  "notFound": "Introuvable",
+  "nocommandesFound": "Aucune commande trouvée",
+  "paymentstatus" : "Statut de paiement",
+  "completedOrders": "Commandes terminées",
+"cancelledOrders": "Commandes annulées",
+"enpreparation": "en preparation",
+"pendingOrders": "commandes en attente",
+
+  "stock_management": "Gestion des stocks",
+
+"confirmOrderMessage": "Êtes-vous sûr de vouloir confirmer cette commande ?",
+"cancelOrder": "Annuler la commande",
+"cancelOrderMessage": "Êtes-vous sûr de vouloir annuler cette commande ?",
+"statusUpdated": "Statut mis à jour avec successe",
+
+"errorUpdatingStatus": "Error updating status",
+  "invalidQuantity": "Quantité invalide",
+  "stoke": "Stock",
+  "price": "Prix",
+  "quantity": "Quantité"
+  
 }

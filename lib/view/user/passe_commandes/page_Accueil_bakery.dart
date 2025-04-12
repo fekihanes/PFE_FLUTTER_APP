@@ -222,7 +222,7 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
               ),
               const Spacer(),
               Text(
-                product.reel_quantity.toString(),
+                product.reelQuantity.toString(),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize:

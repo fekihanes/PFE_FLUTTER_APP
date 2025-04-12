@@ -16,16 +16,17 @@ class _AddProductPageState extends State<AddProductPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
-  final TextEditingController _wholesale_priceController =
-      TextEditingController();
+  final TextEditingController _wholesale_priceController = TextEditingController();
   bool _isSaltySelected = true;
   String? _imagePath;
   Uint8List? _webImage;
+  bool _isImageRequiredError = false;
 
   void _setImage(String? imagePath, Uint8List? webImage) {
     setState(() {
       _imagePath = imagePath;
       _webImage = webImage;
+      _isImageRequiredError = false; // Reset error when image is selected
     });
   }
 
@@ -38,7 +39,11 @@ class _AddProductPageState extends State<AddProductPage> {
   }
 
   void _submitForm() {
-    if (_formKey.currentState!.validate()) {
+    setState(() {
+      _isImageRequiredError = (_imagePath == null && _webImage == null);
+    });
+
+    if (_formKey.currentState!.validate() && !_isImageRequiredError) {
       String picture = '';
       if (kIsWeb && _webImage != null) {
         picture = base64Encode(_webImage!);
@@ -116,8 +121,7 @@ class _AddProductPageState extends State<AddProductPage> {
                   if (!regex.hasMatch(value)) {
                     return AppLocalizations.of(context)!.invalidPrice;
                   }
-                  if (double.tryParse(value)! >
-                      double.tryParse(_priceController.text)!) {
+                  if (double.tryParse(value)! > double.tryParse(_priceController.text)!) {
                     return AppLocalizations.of(context)!.wholesalePriceError;
                   }
                   return null;
@@ -130,18 +134,16 @@ class _AddProductPageState extends State<AddProductPage> {
                 children: [
                   ImageInputWidget(
                     onImageSelected: _setImage,
-                    imagePath: _imagePath,
-                    webImage: _webImage,
-                    width: 150,
+                    initialImage: null, // Pas d'image initiale par défaut
                     height: 150,
+                    width: 150,
                   ),
-                  if ((_imagePath == null && _webImage == null) &&
-                      (_formKey.currentState?.validate() ?? false))
+                  if (_isImageRequiredError)
                     Padding(
                       padding: const EdgeInsets.only(top: 8.0),
                       child: Text(
                         AppLocalizations.of(context)!.requiredImage,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.red,
                           fontSize: 12,
                         ),
@@ -226,5 +228,13 @@ class _AddProductPageState extends State<AddProductPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _priceController.dispose();
+    _wholesale_priceController.dispose();
+    super.dispose();
   }
 }

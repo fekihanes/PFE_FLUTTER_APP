@@ -5,6 +5,7 @@ import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
 import 'package:flutter_application/custom_widgets/RoleWidget.dart';
 import 'package:flutter_application/services/manager/manager_service.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedUserResponse.dart';
+import 'package:flutter_application/services/manager/managment_employees.dart';
 import 'package:flutter_application/view/manager/Add_Employee_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -32,7 +33,7 @@ class _HomePageManagerState extends State<HomePageManager> {
       isLoading = true;
     });
 
-    PaginatedUserResponse? response = await ManagerService().searchemployees(
+    PaginatedUserResponse? response = await ManagementEmployeesService().searchemployees(
       context,
       query: _searchController.text.trim(),
       page: page,
@@ -502,7 +503,7 @@ class _HomePageManagerState extends State<HomePageManager> {
                                 ),
                                 ElevatedButton(
                                   onPressed: () async {
-                                    await ManagerService().updateUserRole(
+                                    await ManagementEmployeesService().updateUserRole(
                                         user.id, selectedRole, context);
                                     fetchUsers(page: currentPage);
                                     setState(() {

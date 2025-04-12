@@ -65,7 +65,7 @@ class LocationService {
       final placemarks = await geo.placemarkFromCoordinates(lat, lng);
       if (placemarks.isEmpty) return {'error': 'Aucune adresse trouvée'};
 
-      final place = placemarks.first;
+      // final place = placemarks.first;
       // return {
       //   'street': place.street ?? '',
       //   'subAdministrativeArea': place.subAdministrativeArea ?? '',

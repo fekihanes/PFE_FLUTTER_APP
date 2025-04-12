@@ -849,6 +849,7 @@ class _PasseCommandeState extends State<PasseCommande> {
       receptionTime:
           '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
       primaryAddress: addressController.text,
+      payment_status: 0,
       secondaryAddress: _secondaryAddressController.text,
       secondaryPhone: _secondaryPhoneController.text,
       descriptionCommande: descriptionController.text,

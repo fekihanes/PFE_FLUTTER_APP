@@ -83,7 +83,7 @@ class AuthService {
       await prefs.setString('email', userData['email'] ?? '');
       await prefs.setString('name', userData['name'] ?? '');
       await prefs.setString('role', userData['role'] ?? '');
-      await prefs.setString('bakery_id', userData['bakery_id'] ?? '');
+      await prefs.setString('bakery_id', userData['bakery_id'].toString() ?? '');
       await prefs.setString(
           'my_bakery', userData['bakery']?['id']?.toString() ?? '');
       return {'success': true, 'data': userData};
@@ -310,7 +310,7 @@ class AuthService {
         await prefs.setString('email', userData['email'] ?? '');
         await prefs.setString('name', userData['name'] ?? '');
         await prefs.setString('role', userData['role'] ?? '');
-        await prefs.setString('bakery_id', userData['bakery_id'] ?? '');
+        await prefs.setString('bakery_id', userData['bakery_id'].toString() ?? '');
         await prefs.setString(
             'my_bakery', userData['bakery']?['id']?.toString() ?? '');
         return {'success': true, 'data': userData};

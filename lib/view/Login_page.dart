@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application/custom_widgets/CustomTextField.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/view/admin/home_page_admin.dart';
+import 'package:flutter_application/view/employees/Boulanger/gestionDeStokeEnComptoir.dart';
 import 'package:flutter_application/view/manager/Editing_the_bakery_profile.dart';
-import 'package:flutter_application/view/manager/home_page_manager.dart';
+import 'package:flutter_application/view/manager/page_management_employees.dart';
 import 'package:flutter_application/view/user/page_find_bahery.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -26,7 +27,8 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _passwordConfirmationController = TextEditingController();
+  final TextEditingController _passwordConfirmationController =
+      TextEditingController();
 
   Future<void> _handleAuth() async {
     if (!_formKey.currentState!.validate()) return;
@@ -74,14 +76,26 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted) return;
 
     switch (role) {
+      case 'patissier':
+      case 'boulanger':
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const Gestiondestokeencomptoir()));
+        break;
       case 'admin':
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomePageAdmin()));
+        Navigator.pushReplacement(context,
+            MaterialPageRoute(builder: (context) => const HomePageAdmin()));
         break;
       case 'manager':
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const EditingTheBakeryProfile()));
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const EditingTheBakeryProfile()));
         break;
       case 'user':
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PageFindBahery()));
+        Navigator.pushReplacement(context,
+            MaterialPageRoute(builder: (context) => const PageFindBahery()));
         break;
       default:
         _showSuccessSnackbar("Unknown role");
@@ -152,7 +166,8 @@ class _LoginPageState extends State<LoginPage> {
           _showErrorSnackbar(result['error']);
         }
       } catch (e) {
-        _showErrorSnackbar(AppLocalizations.of(context)!.errorSendingLink + e.toString());
+        _showErrorSnackbar(
+            AppLocalizations.of(context)!.errorSendingLink + e.toString());
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
@@ -169,7 +184,7 @@ class _LoginPageState extends State<LoginPage> {
       backgroundColor: const Color(0xFFE5E7EB),
       body: SafeArea(
         child: Center(
-          child: isLargeScreen 
+          child: isLargeScreen
               ? _buildDesktopLayout(localization, context)
               : _buildMobileLayout(localization, context),
         ),
@@ -177,7 +192,8 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildDesktopLayout(AppLocalizations localization, BuildContext context) {
+  Widget _buildDesktopLayout(
+      AppLocalizations localization, BuildContext context) {
     return Container(
       constraints: const BoxConstraints(maxWidth: 1400),
       padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 60),
@@ -198,7 +214,8 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildMobileLayout(AppLocalizations localization, BuildContext context) {
+  Widget _buildMobileLayout(
+      AppLocalizations localization, BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -235,9 +252,10 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildImage(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-        final maxSize = isLandscape 
-            ? constraints.maxHeight * 0.8 
+        final isLandscape =
+            MediaQuery.of(context).orientation == Orientation.landscape;
+        final maxSize = isLandscape
+            ? constraints.maxHeight * 0.8
             : constraints.maxWidth * 0.9;
 
         return ConstrainedBox(
@@ -281,7 +299,8 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 15),
         _buildPasswordField(localization),
         if (!_isConnexionSelected) const SizedBox(height: 15),
-        if (!_isConnexionSelected) _buildPasswordConfirmationField(localization),
+        if (!_isConnexionSelected)
+          _buildPasswordConfirmationField(localization),
         const SizedBox(height: 20),
         if (_isConnexionSelected) _buildForgotPassword(localization),
         const SizedBox(height: 30),
@@ -358,8 +377,10 @@ class _LoginPageState extends State<LoginPage> {
       icon: Icons.lock,
       obscureText: !_isPasswordVisible,
       suffixIcon: IconButton(
-        icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off),
-        onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+        icon:
+            Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off),
+        onPressed: () =>
+            setState(() => _isPasswordVisible = !_isPasswordVisible),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -378,8 +399,11 @@ class _LoginPageState extends State<LoginPage> {
       icon: Icons.lock,
       obscureText: !_isPasswordConfirmationVisible,
       suffixIcon: IconButton(
-        icon: Icon(_isPasswordConfirmationVisible ? Icons.visibility : Icons.visibility_off),
-        onPressed: () => setState(() => _isPasswordConfirmationVisible = !_isPasswordConfirmationVisible),
+        icon: Icon(_isPasswordConfirmationVisible
+            ? Icons.visibility
+            : Icons.visibility_off),
+        onPressed: () => setState(() =>
+            _isPasswordConfirmationVisible = !_isPasswordConfirmationVisible),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -427,7 +451,9 @@ class _LoginPageState extends State<LoginPage> {
       child: _isLoading
           ? const CircularProgressIndicator(color: Colors.white)
           : Text(
-              _isConnexionSelected ? localization.connexion : localization.inscription,
+              _isConnexionSelected
+                  ? localization.connexion
+                  : localization.inscription,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,

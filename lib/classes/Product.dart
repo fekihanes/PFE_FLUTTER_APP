@@ -2,81 +2,79 @@ import 'package:flutter_application/classes/Bakery.dart';
 
 class Product {
   final int id;
-  final int bakeryId; // Foreign key to bakeries table
+  final int bakeryId;
   final String name;
   final double price;
-  final double wholesale_price;
+  final double wholesalePrice;
   final String type;
-  final int reel_quantity;
+  final int reelQuantity;
   final String picture;
   String? description;
   final DateTime createdAt;
   final DateTime updatedAt;
-   Bakery ?bakery;
+  final Bakery? bakery;
 
-  // Constructor
   Product({
     required this.id,
     required this.bakeryId,
     required this.name,
     required this.price,
-    required this.wholesale_price,
+    required this.wholesalePrice,
     required this.type,
-    required this.reel_quantity,
+    required this.reelQuantity,
     required this.picture,
-    required this.description,
+    this.description,
     required this.createdAt,
     required this.updatedAt,
-     this.bakery, // Added bakery
+    this.bakery,
   });
 
-  // FromJson: Create an instance from a map (usually from a server response)
   factory Product.fromJson(Map<String, dynamic> json) {
-    var bakeryJson = json['bakery']; // Handle null as Map<String, dynamic>;
+    final bakeryJson = json['bakery'];
     Bakery? bakery;
-    if (bakeryJson != null) {
+    if (bakeryJson != null && bakeryJson is Map<String, dynamic>) {
       bakery = Bakery.fromJson(bakeryJson);
-    } else {
-      bakery = null;
     }
+
     return Product(
-      id: json['id'] ?? 0,
-      bakeryId: json['bakery_id'] ?? 0,
-      name: json['name'] ?? '',
-      price: double.tryParse(json['price'] ?? '') ?? 0.0, // Handle string to double
-      wholesale_price: double.tryParse(json['wholesale_price'] ?? '') ?? 0.0, // Handle string to double
-      type: json['type'] ?? '',
-      reel_quantity: json['reel_quantity'] ?? 0,
-      picture: json['picture'],
-      description: json['description'],
-      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updated_at'] ?? '') ?? DateTime.now(),
-      bakery: bakery, // Set bakery object
+      id: json['id'] as int? ?? 0,
+      bakeryId: json['bakery_id'] as int? ?? 0,
+      name: json['name'] as String? ?? 'Unknown',
+      price: (json['price'] is num
+          ? json['price'].toDouble()
+          : double.tryParse(json['price'].toString()) ?? 0.0),
+      wholesalePrice: (json['wholesale_price'] is num
+          ? json['wholesale_price'].toDouble()
+          : double.tryParse(json['wholesale_price'].toString()) ?? 0.0),
+      type: json['type'] as String? ?? '',
+      reelQuantity: json['reel_quantity'] as int? ?? 0,
+      picture: json['picture'] as String? ?? '',
+      description: json['description'] as String?,
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? '') ?? DateTime.now(),
+      bakery: bakery,
     );
   }
 
-  // ToJson: Convert the instance into a map (usually for sending data to a server)
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'bakery_id': bakeryId,
       'name': name,
       'price': price,
-      'wholesale_price': wholesale_price,
+      'wholesale_price': wholesalePrice,
       'type': type,
-      'reel_quantity': reel_quantity,
+      'reel_quantity': reelQuantity,
       'picture': picture,
       'description': description,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
-      'bakery': bakery?.toJson(), // Convert bakery to JSON
+      'bakery': bakery?.toJson(),
     };
   }
 
-  // ToString: A method to return a string representation of the object
   @override
   String toString() {
-    return 'Product{id: $id, bakeryId: $bakeryId, name: $name, price: $price, wholesale_price: $wholesale_price, reel_quantity: $reel_quantity, type: $type, description: $description, picture: $picture, createdAt: $createdAt, updatedAt: $updatedAt}';
+    return 'Product{id: $id, bakeryId: $bakeryId, name: $name, price: $price, wholesalePrice: $wholesalePrice, type: $type, reelQuantity: $reelQuantity, picture: $picture, description: $description, createdAt: $createdAt, updatedAt: $updatedAt, bakery: $bakery}';
   }
 }
-

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application/custom_widgets/LanguageSelector.dart';
+import 'package:flutter_application/custom_widgets/UserProfileImageState.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/view/Login_page.dart';
+import 'package:flutter_application/view/bakery/Accueil_bakery.dart';
+import 'package:flutter_application/view/bakery/payment_status_page.dart';
 import 'package:flutter_application/view/manager/Article/Gestion_des_Produits.dart';
 import 'package:flutter_application/view/manager/Editing_the_bakery_profile.dart';
-import 'package:flutter_application/view/manager/home_page_manager.dart';
+import 'package:flutter_application/view/manager/page_management_employees.dart';
 import 'package:flutter_application/view/manager/primary_material/gestion_de_stock.dart';
+import 'package:flutter_application/view/bakery/Accueil_bakery.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -60,6 +64,19 @@ class _CustomDrawerManagerState extends State<CustomDrawerManager> {
                 ),
                 ListTile(
                   leading: Icon(Icons.store, color: const Color(0xFFFB8C00)),
+                  title: Text('cassire'),
+                  // title: Text(AppLocalizations.of(context)!.bakeryManagement),
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>
+                               AccueilBakery(products_selected: {},)),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.store, color: const Color(0xFFFB8C00)),
                   title: Text(AppLocalizations.of(context)!.bakeryManagement),
                   onTap: () {
                     Navigator.pushReplacement(
@@ -71,14 +88,14 @@ class _CustomDrawerManagerState extends State<CustomDrawerManager> {
                   },
                 ),
                 ListTile(
-                  leading: Icon(Icons.inventory, color: const Color(0xFFFB8C00)),
+                  leading:
+                      Icon(Icons.inventory, color: const Color(0xFFFB8C00)),
                   title: Text(AppLocalizations.of(context)!.stockManagement),
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                          builder: (context) =>
-                              const GestionDeStoke()),
+                          builder: (context) => const GestionDeStoke()),
                     );
                   },
                 ),
@@ -105,6 +122,22 @@ class _CustomDrawerManagerState extends State<CustomDrawerManager> {
                     );
                   },
                 ),
+                ListTile(
+                  leading: Icon(Icons.money_off_outlined, color: const Color(0xFFFB8C00)),
+                  title: Text(AppLocalizations.of(context)!.paymentstatus),
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const PaymentStatusPage()),
+                    );
+                  },
+                ),
+
+
+
+
+
                 const Divider(),
                 LanguageSelector(),
                 const Divider(),
@@ -129,18 +162,10 @@ class _CustomDrawerManagerState extends State<CustomDrawerManager> {
 
   Widget _buildUserHeader(BuildContext context) {
     return UserAccountsDrawerHeader(
-      decoration: const BoxDecoration(color: Color(0xFFFB8C00)),
-      accountName: Text(userName,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-      accountEmail: Text(userEmail),
-      currentAccountPicture: CircleAvatar(
-        backgroundColor: Colors.white,
-        backgroundImage:
-            userImageUrl.isNotEmpty ? NetworkImage(userImageUrl) : null,
-        child: userImageUrl.isEmpty
-            ? const Icon(Icons.person, size: 50, color: Colors.grey)
-            : null,
-      ),
-    );
+        decoration: const BoxDecoration(color: Color(0xFFFB8C00)),
+        accountName: Text(userName,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        accountEmail: Text(userEmail),
+        currentAccountPicture: const UserProfileImage());
   }
 }

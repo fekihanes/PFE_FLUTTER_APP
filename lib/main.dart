@@ -1,12 +1,13 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_application/l10n/l10n.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/services/background_service.dart';
-import 'package:flutter_application/services/websocket/notification_service.dart';
+import 'package:flutter_application/services/websocket/Background_notification_service.dart';
 import 'package:flutter_application/services/websocket/websocket_client.dart';
 import 'package:flutter_application/test.dart';
+import 'package:flutter_application/view/employees/Boulanger/gestionDeStokeEnComptoir.dart';
 import 'package:flutter_application/view/login_page.dart';
 import 'package:flutter_application/view/admin/home_page_admin.dart';
 import 'package:flutter_application/view/user/page_find_bahery.dart';
@@ -18,7 +19,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-ValueNotifier<Locale> localeNotifier = ValueNotifier<Locale>(const Locale('en'));
+ValueNotifier<Locale> localeNotifier =
+    ValueNotifier<Locale>(const Locale('en'));
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +29,7 @@ Future<void> main() async {
   if (!kIsWeb) {
     print('📱 Initializing for mobile platform');
     await _requestPermissions();
-    await NotificationService.initialize();
+    await BackgroundNotificationService.initialize();
     await WebsocketService.connect(); // Start WebSocket in foreground
     await BackgroundService.initialize(); // Optional background persistence
     await _requestForegroundServicePermission();
@@ -52,6 +54,7 @@ Future<void> main() async {
   }
 
   print('🏃 Running app...');
+  // debugPaintSizeEnabled = true;
   runApp(const MyApp());
 }
 
@@ -108,6 +111,9 @@ class _MyAppState extends State<MyApp> {
 
       await AuthService().getUserProfile();
       switch (role) {
+        case 'patissier':
+        case 'boulanger':
+          return Gestiondestokeencomptoir();
         case 'admin':
           return const HomePageAdmin();
         case 'manager':

@@ -1,6 +1,5 @@
 import 'package:flutter_application/classes/Bakery.dart';
 import 'package:flutter_application/classes/Paginated/PageLink.dart';
-import 'package:flutter_application/classes/Paginated/PaginatedDescriptionsResponse.dart';
 
 class PaginatedbakeriesResponse {
   int currentPage;

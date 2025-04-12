@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter_application/services/websocket/notification_service.dart';
+import 'package:flutter_application/services/websocket/Background_notification_service.dart';
 import 'package:flutter_application/services/websocket/websocket_client.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
@@ -32,7 +32,7 @@ class BackgroundService {
     print('🔧 onStart called for BackgroundService');
 
     print('🌟 Initializing NotificationService...');
-    await NotificationService.initialize();
+    await BackgroundNotificationService.initialize();
     print('✅ NotificationService initialized');
 
     print('🌐 Establishing WebSocket connection...');

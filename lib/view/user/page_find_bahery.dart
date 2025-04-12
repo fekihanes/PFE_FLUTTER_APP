@@ -398,7 +398,7 @@ class _PageFindBaheryState extends State<PageFindBahery> {
             ),
             const SizedBox(width: 4),
             Text(
-              '(${bakery.ratingsCount.toString() ?? '0'})',
+              '(${bakery.ratingsCount.toString()})',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const Spacer(),
@@ -414,9 +414,9 @@ class _PageFindBaheryState extends State<PageFindBahery> {
               },
               child: Row(
                 children: [
-                  const Icon(Icons.star,
+                   Icon(Icons.star,
                       color: Colors.white, size: 14), // Smaller icon
-                  const Text(
+                   Text(
                     'Évaluer', // Shortened text
                     style: TextStyle(fontSize: 12, color: Colors.white),
                   ),
@@ -471,7 +471,7 @@ class _PageFindBaheryState extends State<PageFindBahery> {
   String? getOpeningHours(Bakery bakery, String key) {
     try {
       Map<String, dynamic> storedHours =
-          jsonDecode(bakery.openingHours ?? '{}');
+          jsonDecode(bakery.openingHours);
       DateTime now = DateTime.now();
       String searchDay = Traductions().getEnglishDayName(now);
       late Map<String, dynamic> openingHours = {};

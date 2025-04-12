@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 
 import 'package:flutter_application/classes/traductions.dart';
-import 'package:flutter_application/custom_widgets/customSnackbar.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 
 class Bakery {
   final int id;

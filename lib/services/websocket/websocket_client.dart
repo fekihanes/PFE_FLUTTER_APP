@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
-import 'package:flutter_application/services/websocket/notification_service.dart';
+import 'package:flutter_application/services/Notification/NotificationService.dart';
+import 'package:flutter_application/services/websocket/Background_notification_service.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -205,11 +206,13 @@ class WebsocketService {
 
         print('📩 Nouvelle notification: $messageText');
 
-        await NotificationService.showNotification(
+        await BackgroundNotificationService.showNotification(
           id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
           title: 'Nouvelle Commande',
           message: messageText,
         );
+             await NotificationService().getNotificationCount2();
+
         print('🔔 Notification affichée: $messageText');
       } else {
         print('🚫 Événement non pris en charge: $event');
