@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/AppNotification.dart';
 import 'package:flutter_application/classes/Product.dart';
+import 'package:flutter_application/classes/ScrollingText.dart';
 import 'package:flutter_application/custom_widgets/customSnackbar.dart';
+import 'package:flutter_application/services/Bakery/bakery_service.dart';
 import 'package:flutter_application/services/Notification/NotificationService.dart';
-import 'package:flutter_application/services/emloyees/ProductService.dart';
+import 'package:flutter_application/services/emloyees/EmloyeesProductService.dart';
 import 'package:flutter_application/services/emloyees/CommandeService.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -27,6 +29,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   String? nextPageUrl;
   List<bool> _expanded = [];
   Map<int, List<Product>> _productCache = {};
+   double deliveryFee = 0;
 
   @override
   void initState() {
@@ -48,6 +51,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     setState(() => isLoading = true);
     final response =
         await NotificationService().getUnreadNotifications(context, page);
+          deliveryFee = await BakeryService().getdeliveryFee(context);
     setState(() {
       isLoading = false;
       if (response != null) {
@@ -77,7 +81,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
     try {
       final products =
-          await ProductService().fetchProductsByIds(context, productIds);
+          await EmloyeesProductService().fetchProductsByIds(context, productIds);
       _productCache[cacheKey] = products;
       return products;
     } catch (e) {
@@ -372,7 +376,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Widget _buildDetailsSection(AppNotification notification) {
-    const double deliveryFee = 1.0;
+    
 
     return FutureBuilder<List<Product>>(
       future: _fetchProductDetails(notification.data.listDeIdProduct),
@@ -408,11 +412,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
               price: 0.0,
               wholesalePrice: 0.0,
               type: '',
+              cost: '0',
+              enable: 0,
               reelQuantity: 0,
               picture: '',
               description: null,
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),
+                            primaryMaterials: [],
+
             ),
           );
           final itemTotal = product.price * quantity;
@@ -579,18 +587,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 id: notification.commandeId!,
               );
             },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(FontAwesomeIcons.check,
-                    size: 16, color: Colors.white),
+            child:ScrollingWidgetList(       children: [
                 const SizedBox(width: 8),
                 Text(
                   AppLocalizations.of(context)!.confirm,
                   style: const TextStyle(color: Colors.white),
                 ),
-              ],
-            ),
+                const Icon(FontAwesomeIcons.check,
+                    size: 16, color: Colors.white),
+              ],) 
           ),
         ),
         const SizedBox(width: 8),

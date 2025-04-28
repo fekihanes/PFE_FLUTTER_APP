@@ -4,12 +4,13 @@ import 'package:flutter_application/custom_widgets/UserProfileImageState.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/view/Login_page.dart';
 import 'package:flutter_application/view/bakery/Accueil_bakery.dart';
+import 'package:flutter_application/view/bakery/page_facture_par_mois.dart';
 import 'package:flutter_application/view/bakery/payment_status_page.dart';
+import 'package:flutter_application/view/employees/Boulanger/MelangeListPage.dart';
 import 'package:flutter_application/view/manager/Article/Gestion_des_Produits.dart';
 import 'package:flutter_application/view/manager/Editing_the_bakery_profile.dart';
 import 'package:flutter_application/view/manager/page_management_employees.dart';
 import 'package:flutter_application/view/manager/primary_material/gestion_de_stock.dart';
-import 'package:flutter_application/view/bakery/Accueil_bakery.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -64,18 +65,18 @@ class _CustomDrawerManagerState extends State<CustomDrawerManager> {
                 ),
                 ListTile(
                   leading: Icon(Icons.store, color: const Color(0xFFFB8C00)),
-                  title: Text('cassire'),
+                  title: Text(AppLocalizations.of(context)!.caisse),
                   // title: Text(AppLocalizations.of(context)!.bakeryManagement),
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
                           builder: (context) =>
-                               AccueilBakery(products_selected: {},)),
+                               const AccueilBakery(products_selected: {},)),
                     );
                   },
                 ),
-                ListTile(
+ListTile(
                   leading: Icon(Icons.store, color: const Color(0xFFFB8C00)),
                   title: Text(AppLocalizations.of(context)!.bakeryManagement),
                   onTap: () {
@@ -133,10 +134,28 @@ class _CustomDrawerManagerState extends State<CustomDrawerManager> {
                     );
                   },
                 ),
-
-
-
-
+                ListTile(
+                  leading: Icon(Icons.receipt, color: const Color(0xFFFB8C00)),
+                  title: Text(AppLocalizations.of(context)!.monthlyInvoice),
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const PageFactureParMois()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.list, color: const Color(0xFFFB8C00)),
+                  title: Text(AppLocalizations.of(context)?.melangeList ?? ''),
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const MelangeListPage()),
+                    );
+                  },
+                ),
 
                 const Divider(),
                 LanguageSelector(),

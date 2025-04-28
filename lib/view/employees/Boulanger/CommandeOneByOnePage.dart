@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application/services/emloyees/EmloyeesProductService.dart';
 import 'package:flutter_application/view/employees/Boulanger/CommandesByGroupPage.dart';
 import 'package:intl/intl.dart';
 
@@ -7,7 +8,6 @@ import 'package:flutter_application/classes/Commande.dart';
 import 'package:flutter_application/classes/Product.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_employees.dart';
 import 'package:flutter_application/services/emloyees/CommandeService.dart';
-import 'package:flutter_application/services/emloyees/ProductService.dart';
 
 class CommandeOneByOnePage extends StatefulWidget {
   const CommandeOneByOnePage({super.key});
@@ -56,7 +56,7 @@ class _CommandeOneByOnePageState extends State<CommandeOneByOnePage> {
     }
     try {
       final products =
-          await ProductService().fetchProductsByIds(context, productIds);
+          await EmloyeesProductService().fetchProductsByIds(context, productIds);
       _productCache[cacheKey] = products;
       return products;
     } catch (e) {

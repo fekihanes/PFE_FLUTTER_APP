@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';  // Assurez-vous d'avoir cette dépendance
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';  // Import AppLocalizations
 
 class LanguageSelector extends StatefulWidget {
   @override
@@ -56,7 +57,7 @@ class _LanguageSelectorState extends State<LanguageSelector> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Langue', // Remplace par AppLocalizations.of(context)!.language si nécessaire
+            AppLocalizations.of(context)!.language, // Remplace par AppLocalizations.of(context)!.language si nécessaire
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),

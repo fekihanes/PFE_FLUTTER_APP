@@ -191,7 +191,7 @@ class _UserProfileImageState extends State<UserProfileImage> {
   /// 🔄 **Retourne l'image correcte en fonction de la plateforme**
   ImageProvider? _getUserImage() {
     if (_imageUrl != null) {
-      return NetworkImage(_imageUrl!);
+      return NetworkImage(ApiConfig.changePathImage(_imageUrl!));
     } else if (kIsWeb && _webImageBytes != null) {
       return MemoryImage(_webImageBytes!);
     } else if (!kIsWeb && _imagePath != null) {

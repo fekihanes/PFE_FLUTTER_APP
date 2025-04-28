@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_application/custom_widgets/CustomTextField.dart';
 import 'package:flutter_application/custom_widgets/ImageInput.dart';
+import 'package:flutter_application/services/Bakery/bakery_service.dart';
 import 'package:flutter_application/services/emloyees/primary_materials.dart';
-import 'package:flutter_application/services/manager/manager_service.dart';
+import 'package:flutter_application/view/manager/primary_material/gestion_de_stock.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:typed_data';
@@ -18,6 +20,7 @@ class AddPrimary_materialPage extends StatefulWidget {
 class _AddPrimary_materialPageState extends State<AddPrimary_materialPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _costController = TextEditingController();
   final TextEditingController _quantity_max_Controller =
       TextEditingController();
   final TextEditingController _quantity_min_Controller =
@@ -37,9 +40,10 @@ class _AddPrimary_materialPageState extends State<AddPrimary_materialPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ManagerService().havebakery(context);
+      BakeryService().havebakery(context);
     });
   }
+
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       // Vérification supplémentaire pour les quantités
@@ -72,12 +76,20 @@ class _AddPrimary_materialPageState extends State<AddPrimary_materialPage> {
         _quantity_min_Controller.text,
         _quantity_max_Controller.text,
         image,
+        _costController.text,
         context,
       );
     }
+             Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const GestionDeStoke(),
+                ),
+              );
   }
 
   @override
+
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFE5E7EB),
@@ -101,6 +113,31 @@ class _AddPrimary_materialPageState extends State<AddPrimary_materialPage> {
                 validator: (value) {
                   if (value!.isEmpty) {
                     return AppLocalizations.of(context)!.requiredField;
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              CustomTextField(
+                controller: _costController,
+                labelText: AppLocalizations.of(context)!.cost,
+                icon: Icons.monetization_on_outlined,
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                      RegExp(r'^\d*\.?\d{0,2}')), // max 2 décimales
+                ],
+
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return AppLocalizations.of(context)!.please_enter_a_cost;
+                  }
+                  final cost = double.tryParse(value);
+                  if (cost == null) {
+                    return AppLocalizations.of(context)!.please_enter_a_valid_number;
+                  }
+                  if (cost <= 0) {
+                    return AppLocalizations.of(context)!.cost_must_be_greater_than_zero;
                   }
                   return null;
                 },

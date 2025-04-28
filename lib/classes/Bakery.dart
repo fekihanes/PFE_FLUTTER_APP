@@ -15,6 +15,7 @@ class Bakery {
   final String phone;
   final String email;
   final String? image;
+  
   final String openingHours; // Modifié pour flexibilité
   final int managerId;
   final DateTime createdAt;
@@ -22,6 +23,7 @@ class Bakery {
   double? distance;
   double? avgRating;
   int? ratingsCount;
+  final double deliveryFee;
 
   Bakery({
     required this.id,
@@ -41,6 +43,7 @@ class Bakery {
     this.distance,
     this.avgRating,
     this.ratingsCount,
+    required this.deliveryFee,
   });
 
   factory Bakery.fromJson(Map<String, dynamic> json) {
@@ -64,6 +67,7 @@ class Bakery {
       distance: _safeParseDouble(json['distance']),
       avgRating: _safeParseDouble(json['avg_rating']),
       ratingsCount: json['ratings_count'] as int?,
+      deliveryFee: _safeParseDouble(json['deliveryFee']) ?? 0.0,
     );
   }
 
@@ -115,6 +119,7 @@ class Bakery {
     double? distance,
     double? avgRating,
     int? ratingsCount,
+    double? deliveryFee
   }) {
     return Bakery(
       id: id ?? this.id,
@@ -135,6 +140,7 @@ class Bakery {
       distance: distance ?? this.distance,
       avgRating: avgRating ?? this.avgRating,
       ratingsCount: ratingsCount ?? this.ratingsCount,
+      deliveryFee: deliveryFee ?? this.deliveryFee,
     );
   }
 
@@ -257,6 +263,20 @@ class Bakery {
     } catch (e) {
       return '00:00';
     }
+  }
+
+    factory Bakery.empty() {
+    return Bakery(
+      id: 0,
+      name: '',
+      phone: '',
+      email: '',
+      openingHours: '{}',
+      managerId: 0,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      deliveryFee: 0.0,
+    ); // valeurs par défaut
   }
 }
 

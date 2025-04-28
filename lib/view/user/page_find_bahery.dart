@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Bakery.dart';
 import 'package:flutter_application/classes/traductions.dart';
+import 'package:flutter_application/custom_widgets/CustomDrawer_user.dart';
 import 'package:flutter_application/custom_widgets/customSnackbar.dart';
 import 'package:flutter_application/services/LocationService.dart';
 import 'package:flutter_application/services/auth_service.dart';
@@ -149,14 +150,8 @@ class _PageFindBaheryState extends State<PageFindBahery> {
             fontSize: MediaQuery.of(context).size.width < 600 ? 18 : 20,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: AppLocalizations.of(context)!.logout,
-          ),
-        ],
       ),
+      drawer: CustomDraweruser(),
       body: isBigLoading
           ? Center(
               child: Column(
@@ -228,7 +223,7 @@ class _PageFindBaheryState extends State<PageFindBahery> {
     if (constraints.maxWidth < 600) {
       crossAxisCount = 1; // Téléphone
       childAspectRatio =
-          (constraints.maxWidth / 1) / (constraints.maxHeight * 0.58);
+          (constraints.maxWidth / 1) / (constraints.maxHeight * 0.63);
     } else if (constraints.maxWidth < 900) {
       crossAxisCount = 2; // Tablette
       childAspectRatio =

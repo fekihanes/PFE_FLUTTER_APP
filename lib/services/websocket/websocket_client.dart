@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
+import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/services/Notification/NotificationService.dart';
 import 'package:flutter_application/services/websocket/Background_notification_service.dart';
 import 'package:web_socket_channel/io.dart';
@@ -40,7 +41,7 @@ class WebsocketService {
         }
       }
 
-      String host = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
+      String host = ApiConfig.baseUrl.replaceFirst('http://', '').replaceFirst(':8000/api/', '');
       const port = 8081;
       const appKey = 'cjabwv7qmshtdzbbluto';
       final wsUrl = 'ws://$host:$port/app/$appKey';
@@ -132,8 +133,9 @@ class WebsocketService {
       } else {
         _handleNotification(message);
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('❌ Error handling message: $e');
+      print('🔍 Stack trace: $stackTrace');
     }
   }
 
@@ -147,7 +149,7 @@ class WebsocketService {
     print('📡 Subscribing to channel: $channelName');
 
     final authResponse = await http.post(
-      Uri.parse('http://10.0.2.2:8000/broadcasting/auth'),
+      Uri.parse('${ApiConfig.baseUrl}broadcasting/auth'),
       headers: {
         'Authorization': 'Bearer $_token',
         'Accept': 'application/json',
@@ -171,6 +173,8 @@ class WebsocketService {
       };
       _channel!.sink.add(jsonEncode(subscriptionMessage));
       print('📩 Subscription request sent: $subscriptionMessage');
+      await Future.delayed(Duration(seconds: 1));
+      print('📡 Subscription to $channelName completed');
     } else {
       print('❌ Auth failed: ${authResponse.statusCode} - ${authResponse.body}');
     }
@@ -189,43 +193,44 @@ class WebsocketService {
       }
       print('🔍 Event: $event');
 
-      if (notification['data'] == null || notification['data'] is! String) {
-        print('⚠️ No valid data field in notification');
+      if (notification['data'] == null) {
+        print('⚠️ No data field in notification');
         return;
       }
 
-      final dynamic data = jsonDecode(notification['data'] as String);
+      final dynamic data = notification['data'] is String ? jsonDecode(notification['data']) : notification['data'];
       print('📦 Données: $data');
 
-      if (event == 'App\\Events\\NewNotificationEvent' ||
-          event == 'Illuminate\\Notifications\\Events\\BroadcastNotificationCreated') {
-        final int commandeId = data['commande_id'] is int
-            ? data['commande_id']
-            : int.tryParse(data['commande_id']?.toString() ?? '') ?? 0;
-        final String messageText = data['description'] ?? data['message'] ?? 'Nouvelle commande #$commandeId reçue';
+      if (event == 'new.notification' || event == 'App\\Events\\NewNotificationEvent') {
+        final commandeId = data['commande_id'];
+        final String messageText = data['description']?.toString() ?? data['message']?.toString() ?? 'Notification sans description';
+        final int bakeryId = int.tryParse(data['bakery_id']?.toString() ?? '0') ?? 0;
 
-        print('📩 Nouvelle notification: $messageText');
+        print('📩 Nouvelle notification: $messageText (commandeId: $commandeId, bakeryId: $bakeryId)');
+
+        final String title = commandeId == null ? 'Étape de la Boulangerie' : 'Nouvelle Commande #$commandeId';
 
         await BackgroundNotificationService.showNotification(
           id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-          title: 'Nouvelle Commande',
+          title: title,
           message: messageText,
         );
-             await NotificationService().getNotificationCount2();
+        await NotificationService().getNotificationCount2();
 
-        print('🔔 Notification affichée: $messageText');
+        print('🔔 Notification affichée: $title - $messageText');
       } else {
         print('🚫 Événement non pris en charge: $event');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('❌ Erreur lors du traitement de la notification: $e');
+      print('🔍 Stack trace: $stackTrace');
     }
   }
 
   static Future<String?> _fetchTokenFromDatabase() async {
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:8000/api/refresh-token'),
+        Uri.parse('${ApiConfig.baseUrl}api/refresh-token'),
         headers: {'Accept': 'application/json'},
         body: {
           'refresh_token': (await SharedPreferences.getInstance()).getString('refresh_token') ?? '',
@@ -252,10 +257,7 @@ class WebsocketService {
     print('✅ WebSocket disconnected');
   }
 
-  // Public method to check if WebSocket is disconnected
   static bool isDisconnected() {
     return _channel == null || _channel!.closeCode != null;
   }
 }
-
-  

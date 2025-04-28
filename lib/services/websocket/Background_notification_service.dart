@@ -1,4 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart' show RootIsolateToken, BackgroundIsolateBinaryMessenger;
 
 class BackgroundNotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
@@ -12,6 +14,14 @@ class BackgroundNotificationService {
     if (_isInitialized) {
       print('⚠️ NotificationService already initialized, skipping');
       return; // Prevent re-initialization
+    }
+
+    // Ensure BackgroundIsolateBinaryMessenger is initialized for background isolates
+    if (!kIsWeb) {
+      final rootIsolateToken = RootIsolateToken.instance;
+      if (rootIsolateToken != null) {
+        BackgroundIsolateBinaryMessenger.ensureInitialized(rootIsolateToken);
+      }
     }
 
     print('🛠 Setting up Android initialization settings');
@@ -32,9 +42,31 @@ class BackgroundNotificationService {
     );
 
     print('🌟 Initializing FlutterLocalNotificationsPlugin...');
-    await _notificationsPlugin.initialize(initSettings);
+    await _notificationsPlugin.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) async {
+        print('Notification tapped: ${response.payload}');
+      },
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
+    );
+
+    // Remove the permission request as it's causing the PlatformException in background isolates
+    // Permission should be requested in the main isolate (e.g., in main.dart)
+    // await _notificationsPlugin
+    //     .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+    //     ?.requestNotificationsPermission();
+
     _isInitialized = true; // Mark as initialized
     print('✅ NotificationService initialized successfully');
+  }
+
+  @pragma('vm:entry-point')
+  static Future<void> notificationTapBackground(NotificationResponse response) async {
+    final rootIsolateToken = RootIsolateToken.instance;
+    if (rootIsolateToken != null) {
+      BackgroundIsolateBinaryMessenger.ensureInitialized(rootIsolateToken);
+    }
+    print('Notification tapped in background: ${response.payload}');
   }
 
   static NotificationDetails _notificationDetails() {

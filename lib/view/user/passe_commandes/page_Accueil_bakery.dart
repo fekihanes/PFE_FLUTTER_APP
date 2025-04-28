@@ -7,6 +7,7 @@ import 'package:flutter_application/classes/Bakery.dart';
 import 'package:flutter_application/classes/Product.dart';
 import 'package:flutter_application/custom_widgets/customSnackbar.dart';
 import 'package:flutter_application/services/users/bakeries_service.dart';
+import 'package:flutter_application/view/user/page_find_bahery.dart';
 import 'package:flutter_application/view/user/passe_commandes/passe_commande.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -51,15 +52,19 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
     }
   }
 
-  Future<void> fetchproducts({int page = 1}) async {
-    setState(() => isLoading = true);
-    final response = await BakeriesService().searchProducts(
-      context,
-      page: page,
-      myBakery: widget.bakery.id.toString(),
-      type: type,
-      query: _searchController.text.trim(),
-    );
+    Future<void> fetchproducts({int page = 1}) async {
+      setState(() => isLoading = true);
+      final response = await BakeriesService().searchProducts(
+        context,
+        page: page,
+        myBakery: widget.bakery.id.toString(),
+        type: type,
+        enable: 1,
+        query: null
+// query: _searchController.text.trim().isNotEmpty 
+//           ? _searchController.text.trim() 
+//           : null,
+      );
     setState(() {
       isLoading = false;
       if (response != null) {
@@ -114,9 +119,9 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
 
     // Déterminer le crossAxisCount en fonction de la largeur de l'écran
     if (constraints.maxWidth < 600) {
-      crossAxisCount = 2; // Téléphone
+      crossAxisCount = 1; // Téléphone
       childAspectRatio =
-          (constraints.maxWidth / 1) / (constraints.maxHeight * 0.8);
+          (constraints.maxWidth / 1) / (constraints.maxHeight * 0.4);
     } else if (constraints.maxWidth < 900) {
       crossAxisCount = 3; // Tablette
       childAspectRatio =
@@ -250,7 +255,12 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const PageFindBahery()
+            ),
+          ),
         ),
         backgroundColor: Colors.white,
       ),
@@ -450,88 +460,7 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
     );
   }
 
-  Widget _buildCartItem(
-      Product product, int quantity, BoxConstraints constraints) {
-    return Container(
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Container(
-            height: constraints.maxWidth < 600 ? 25 : 40,
-            width: constraints.maxWidth < 600 ? 25 : 40,
-            decoration: BoxDecoration(
-              color: Color(0xFFFB8C00), // Couleur de fond orange
-              shape: BoxShape.circle, // Forme circulaire
-            ),
-            child: Center(
-              // Centrer l'icône à l'intérieur du bouton
-              child: IconButton(
-                icon: Icon(Icons.remove,
-                    size: constraints.maxWidth < 600 ? 20 : 24),
-                onPressed: () => _updateQuantity(product, quantity - 1),
-                color: Colors.white, // Couleur de l'icône
-                padding: EdgeInsets
-                    .zero, // Supprimer l'espace par défaut de IconButton
-              ),
-            ),
-          ),
-          SizedBox(width: 3),
-          Text(
-            "$quantity",
-            style: TextStyle(
-                fontSize: constraints.maxWidth < 600 ? 18 : 22,
-                fontWeight: FontWeight.bold),
-          ),
-          SizedBox(width: 3),
-          Container(
-            height: constraints.maxWidth < 600 ? 25 : 40,
-            width: constraints.maxWidth < 600 ? 25 : 40,
-            decoration: BoxDecoration(
-              color: Color(0xFFFB8C00), // Couleur de fond orange
-              shape: BoxShape.circle, // Forme circulaire
-            ),
-            child: Center(
-              // Centrer l'icône à l'intérieur du bouton
-              child: IconButton(
-                icon:
-                    Icon(Icons.add, size: constraints.maxWidth < 600 ? 20 : 24),
-                onPressed: () => _updateQuantity(product, quantity + 1),
 
-                color: Colors.white, // Couleur de l'icône
-                padding: EdgeInsets
-                    .zero, // Supprimer l'espace par défaut de IconButton
-              ),
-            ),
-          ),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              product.name,
-              style: TextStyle(
-                  fontSize: constraints.maxWidth < 600 ? 16 : 18,
-                  fontWeight: FontWeight.bold),
-            ),
-          ),
-          SizedBox(width: 10),
-          Text(
-            "${(product.price * quantity).toStringAsFixed(2)} ${AppLocalizations.of(context)!.dt}",
-            style: TextStyle(
-                fontSize: constraints.maxWidth < 600 ? 16 : 18,
-                color: Colors.grey[600]),
-          ),
-          IconButton(
-            icon: Icon(Icons.delete_outline,
-                size: constraints.maxWidth < 600 ? 20 : 24, color: Colors.red),
-            onPressed: () => _removeProduct(product),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _updateQuantity(Product product, int newQuantity) {
     setState(() {
@@ -726,4 +655,100 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
       ),
     );
   }
+
+    Widget _buildCartItem(
+      Product product, int quantity, BoxConstraints constraints) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 10),
+          Column(
+            children: [
+              Text(
+                product.name,
+                style: TextStyle(
+                  fontSize: constraints.maxWidth < 600 ? 12 : 16,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+              const SizedBox(height: 5),
+              Row(
+                children: [
+                  Container(
+                    height: constraints.maxWidth < 600 ? 25 : 40,
+                    width: constraints.maxWidth < 600 ? 25 : 40,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFB8C00),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: IconButton(
+                        icon: Icon(Icons.remove,
+                            size: constraints.maxWidth < 600 ? 20 : 24),
+                        onPressed: () => _updateQuantity(product, quantity - 1),
+                        color: Colors.white,
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  SizedBox(
+                    width: 30,
+                    child: Text(
+                      "$quantity",
+                      style: TextStyle(
+                        fontSize: constraints.maxWidth < 600 ? 18 : 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  Container(
+                    height: constraints.maxWidth < 600 ? 25 : 40,
+                    width: constraints.maxWidth < 600 ? 25 : 40,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFB8C00),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: IconButton(
+                        icon: Icon(Icons.add,
+                            size: constraints.maxWidth < 600 ? 20 : 24),
+                        onPressed: () => _updateQuantity(product, quantity + 1),
+                        color: Colors.white,
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          Text(
+            "${(product.price * quantity).toStringAsFixed(2)} ${AppLocalizations.of(context)!.dt}",
+            style: TextStyle(
+              fontSize: constraints.maxWidth < 600 ? 16 : 18,
+              color: Colors.grey[600],
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.delete_outline,
+                size: constraints.maxWidth < 600 ? 20 : 24, color: Colors.red),
+            onPressed: () => _removeProduct(product),
+          ),
+        ],
+      ),
+    );
+  }
+
+ 
 }

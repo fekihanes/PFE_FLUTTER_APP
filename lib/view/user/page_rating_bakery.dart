@@ -247,7 +247,7 @@ Widget _buildUserRatingSection(BuildContext context) {
                 ),
               ),
               onPressed: _saveRating,
-              child: Text(AppLocalizations.of(context)!.soumettre),
+              child: Text(AppLocalizations.of(context)!.soumettre, style: const TextStyle(color: Colors.white),),
             ),
           ),
         ],

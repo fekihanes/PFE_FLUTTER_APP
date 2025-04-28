@@ -1,12 +1,16 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedProductResponse.dart';
 import 'package:flutter_application/classes/Product.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
-import 'package:flutter_application/services/manager/manager_service.dart';
+import 'package:flutter_application/services/Bakery/bakery_service.dart';
+import 'package:flutter_application/services/manager/Products_service.dart';
 import 'package:flutter_application/view/manager/Article/AddProductPage.dart';
 import 'package:flutter_application/view/manager/Article/UpdateProductPage.dart';
+import 'package:flutter_application/view/manager/Article/backUProductPage.dart';
+import 'package:flutter_application/view/manager/Article/relation_entre_produit_et_materiaux_primaire/create_relation.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class GestionDesProduits extends StatefulWidget {
@@ -26,15 +30,15 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
   String? nextPageUrl;
   final TextEditingController _searchController = TextEditingController();
 
-  // Cette méthode fetchProducts prend en charge la recherche avec les filtres
   Future<void> fetchProducts({int page = 1}) async {
     setState(() {
       isLoading = true;
     });
 
-    PaginatedProductResponse? response = await ManagerService().searchProducts(
+    PaginatedProductResponse? response = await ProductsService().searchProducts(
       context,
       query: _searchController.text.trim(),
+      enable: 1,
       page: page,
     );
 
@@ -63,13 +67,12 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
     }
   }
 
-
   @override
   void initState() {
     super.initState();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-      ManagerService().havebakery(context);
-    });   
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      BakeryService().havebakery(context);
+    });
     fetchProducts();
   }
 
@@ -87,9 +90,26 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
         title: Text(
           AppLocalizations.of(context)!.productManagement,
           style: const TextStyle(
-              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
         ),
         backgroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.compare_arrows, color: Colors.black),
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const backUProductPage(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       drawer: const CustomDrawerManager(),
       body: Padding(
@@ -102,7 +122,7 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
             _buildInput(),
             const SizedBox(height: 20),
             _buildListproduct(),
-            _buildPagination(), // Added pagination
+            _buildPagination(),
           ],
         ),
       ),
@@ -135,7 +155,6 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
             ),
           ),
           const Spacer(),
-          // Removed `const` here as total.toString() is a runtime operation
           Text(
             total.toString(),
             style: const TextStyle(
@@ -163,7 +182,7 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
         fillColor: Colors.white,
       ),
       onChanged: (value) {
-        fetchProducts(); // Re-fetch products on search input change
+        fetchProducts();
       },
     );
   }
@@ -193,6 +212,7 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
         ),
       );
     }
+
     return Expanded(
       child: ListView.builder(
         itemCount: products.length,
@@ -214,73 +234,86 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
             ),
             child: Row(
               children: [
-          CachedNetworkImage(
-            imageUrl: ApiConfig.changePathImage(product.picture),
-            width: 100,
-            height: 100,
-            fit: BoxFit.cover,
-            progressIndicatorBuilder: (context, url, progress) => Center(
-              child: CircularProgressIndicator(
-                value: progress.progress,
-                color: const Color(0xFFFB8C00),
-              ),
-            ),
-            errorWidget: (context, url, error) => const Icon(Icons.error),
-            imageBuilder: (context, imageProvider) => ClipRRect(
-              borderRadius: BorderRadius.circular(15),
-              child: Image(
-                image: imageProvider,
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-          
+                CachedNetworkImage(
+                  imageUrl: ApiConfig.changePathImage(product.picture),
+                  width: 100,
+                  height: 100,
+                  fit: BoxFit.cover,
+                  progressIndicatorBuilder: (context, url, progress) => Center(
+                    child: CircularProgressIndicator(
+                      value: progress.progress,
+                      color: const Color(0xFFFB8C00),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => const Icon(Icons.error),
+                  imageBuilder: (context, imageProvider) => ClipRRect(
+                    borderRadius: BorderRadius.circular(15),
+                    child: Image(
+                      image: imageProvider,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 20),
                 Expanded(
-                  // Utilisation d'Expanded pour prendre l'espace dispo
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Text(
-                            product.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
+                          Expanded(
+                            child: Text(
+                              product.name,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: kIsWeb ? 20 : 18,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const Spacer(), // Utilisation de Spacer pour aligner les icônes à droite
-                          Row(
-                            // Ajout d'un Row pour les icônes à la fin
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit_square,
-                                    color: Color(0xFF4B5563), size: 22),
-                                onPressed: () async {
-                                  await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          UpdateProductPage(product: product),
-                                    ),
-                                  );
-                                  fetchProducts();
-                                },
+                          PopupMenuButton<String>(   
+                            icon: const Icon(
+                              Icons.more_vert,
+                              color: Color(0xFF4B5563),
+                            ),
+                            itemBuilder: (BuildContext context) => [
+                              PopupMenuItem(
+                                value: 'edit',
+                                child: ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: const Icon(Icons.edit_square, color: Color(0xFF4B5563)),
+                                  title: Text(AppLocalizations.of(context)!.edit),
+                                ),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.delete,
-                                    color: Color(0xFF4B5563), size: 22),
-                                onPressed: () async {
-                                  _showDeleteConfirmationDialog(product);
-                                },
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: const Icon(Icons.delete, color: Color(0xFF4B5563)),
+                                  title: Text(AppLocalizations.of(context)!.delete),
+                                ),
                               ),
+                            
                             ],
+                            onSelected: (value) async {
+                              if (value == 'edit') {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => UpdateProductPage(product: product),
+                                  ),
+                                );
+                                fetchProducts();
+                              } else if (value == 'delete') {
+                                _showDeleteConfirmationDialog(product);
+                              }
+                            },
                           ),
                         ],
                       ),
                       Text(
-                        "${ AppLocalizations.of(context)!.productPrice}: ${product.price.toStringAsFixed(2)} DT",
+                        "${AppLocalizations.of(context)!.productPrice}: ${product.price.toStringAsFixed(2)} DT",
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -288,7 +321,7 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
                         ),
                       ),
                       Text(
-                        "${AppLocalizations.of(context)!.productwholesale_price}: ${ product.wholesalePrice.toStringAsFixed(2)} DT",
+                        "${AppLocalizations.of(context)!.productwholesale_price}: ${product.wholesalePrice.toStringAsFixed(2)} DT",
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -298,9 +331,7 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
                       Row(
                         children: [
                           Icon(
-                            product.type == 'Salty'
-                                ? Icons.local_pizza
-                                : Icons.cookie,
+                            product.type == 'Salty' ? Icons.local_pizza : Icons.cookie,
                             color: Colors.grey,
                           ),
                           Text(
@@ -327,10 +358,9 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
   Widget _buildPagination() {
     List<Widget> pageLinks = [];
 
-    // Couleur pour la flèche quand elle est cliquable
     Color arrowColor = const Color(0xFFFB8C00);
-    Color disabledArrowColor = arrowColor.withOpacity(0.1); // 10% plus clair
-    pageLinks.add(const Spacer()); // Affichage de la flèche "Précédent"
+    Color disabledArrowColor = arrowColor.withOpacity(0.1);
+    pageLinks.add(const Spacer());
     pageLinks.add(
       Container(
         padding: const EdgeInsets.all(8.0),
@@ -345,11 +375,9 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
                   setState(() {
                     currentPage--;
                   });
-                  fetchProducts(
-                      page:
-                          currentPage); // Charge les utilisateurs pour la page précédente
+                  fetchProducts(page: currentPage);
                 }
-              : null, // Si prevPageUrl est null, on ne permet pas l'action
+              : null,
           child: const Icon(
             Icons.arrow_left,
             color: Colors.black,
@@ -358,9 +386,7 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
       ),
     );
 
-    // Affichage des numéros de page
     for (int i = 1; i <= lastPage; i++) {
-      // Check if i is within the range of currentPage - 3 to currentPage + 3
       if (i >= (currentPage - 3).clamp(1, lastPage) &&
           i <= (currentPage + 3).clamp(1, lastPage)) {
         pageLinks.add(
@@ -369,9 +395,7 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
               setState(() {
                 currentPage = i;
               });
-              fetchProducts(
-                  page:
-                      currentPage); // Charge les utilisateurs pour la page correspondante
+              fetchProducts(page: currentPage);
             },
             child: Container(
               padding: const EdgeInsets.all(8.0),
@@ -393,7 +417,6 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
       }
     }
 
-    // Affichage de la flèche "Suivant"
     pageLinks.add(
       Container(
         padding: const EdgeInsets.all(8.0),
@@ -408,11 +431,9 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
                   setState(() {
                     currentPage++;
                   });
-                  fetchProducts(
-                      page:
-                          currentPage); // Charge les utilisateurs pour la page suivante
+                  fetchProducts(page: currentPage);
                 }
-              : null, // Si nextPageUrl est null, on ne permet pas l'action
+              : null,
           child: const Icon(
             Icons.arrow_right,
             color: Colors.black,
@@ -423,18 +444,17 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
     pageLinks.add(const Spacer());
     pageLinks.add(IconButton(
       icon: Container(
-        width: 50, // Set the width of the container
-        height: 50, // Set the height of the container
+        width: 50,
+        height: 50,
         decoration: BoxDecoration(
-          color: const Color(0xFFFB8C00), // Background color
-          borderRadius: BorderRadius.circular(8), // Rounded border
+          color: const Color(0xFFFB8C00),
+          borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: Colors.black
-                  .withOpacity(0.5), // Shadow color (adjust opacity)
-              spreadRadius: 2, // Spread of the shadow
-              blurRadius: 5, // Blur radius
-              offset: const Offset(0, 3), // Shadow position
+              color: Colors.black.withOpacity(0.5),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -460,8 +480,7 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children:
-                  pageLinks, // Utilisation correcte de la liste de widgets
+              children: pageLinks,
             ),
           ),
         ],
@@ -469,35 +488,44 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
     );
   }
 
-  void _showDeleteConfirmationDialog(Product product) async {
+  void _showDeleteConfirmationDialog(Product product) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(
             AppLocalizations.of(context)!.confirmation,
-            style:
-                const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
-          content: Row(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                '${AppLocalizations.of(context)!.deleteConfirmation}  ',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '${AppLocalizations.of(context)!.deleteConfirmation} ',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    TextSpan(
+                      text: product.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
                 textAlign: TextAlign.center,
-              ),
-              Text(
-                product.name,
-                style: const TextStyle(fontWeight: FontWeight.bold,color: Colors.red),
-                textAlign: TextAlign.center,
+                softWrap: true,
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Ferme la boîte de dialogue
+                Navigator.of(context).pop();
               },
               child: Text(
                 AppLocalizations.of(context)!.cancel,
@@ -512,17 +540,19 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
                 ),
               ),
               onPressed: () async {
-                await ManagerService().DeleteProduct(context, product.id);
+                await ProductsService().DeleteProduct(context, product.id);
                 fetchProducts();
                 setState(() {
-                  products.remove(Product);
+                  products.remove(product);
                 });
-                Navigator.of(context).pop(); // Ferme la boîte de dialogue
+                Navigator.of(context).pop();
               },
               child: Text(
                 AppLocalizations.of(context)!.delete,
                 style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],

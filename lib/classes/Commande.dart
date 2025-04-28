@@ -1,3 +1,4 @@
+import 'dart:convert';
 
 class Commande {
   final int id;
@@ -21,6 +22,8 @@ class Commande {
   final DateTime createdAt;
   final DateTime updatedAt;
   final int payment_status;
+  final String selected_price ;
+
 
   Commande({
     required this.id,
@@ -44,27 +47,43 @@ class Commande {
     required this.createdAt,
     required this.updatedAt,
     required this.payment_status,
+    required this.selected_price,
   });
 
   factory Commande.fromJson(Map<String, dynamic> json) {
+    // Helper function to parse potentially stringified JSON arrays
+    List<T>? parseJsonArray<T>(dynamic value, T Function(dynamic) converter) {
+      if (value == null) return null;
+      try {
+        if (value is String && value.isNotEmpty) {
+          // Try to decode stringified JSON
+          final decoded = jsonDecode(value);
+          if (decoded is List) {
+            return List<T>.from(decoded.map(converter));
+          }
+        } else if (value is List) {
+          // Directly parse if already a list
+          return List<T>.from(value.map(converter));
+        }
+      } catch (e) {
+        // Log error for debugging (use a proper logger in production)
+        print('Error parsing JSON array: $e for value: $value');
+      }
+      return []; // Return empty list as fallback
+    }
+
     return Commande(
       id: json['id'] as int? ?? 0,
       bakeryId: json['bakery_id'] as int? ?? 0,
       userId: json['user_id'] as int? ?? 0,
-      listDeIdProduct: json['list_de_id_product'] != null
-          ? List<int>.from(json['list_de_id_product'].map((x) => x as int))
-          : [],
-      listDeIdQuantity: json['list_de_id_quantity'] != null
-          ? List<int>.from(json['list_de_id_quantity'].map((x) => x as int))
-          : [],
+      listDeIdProduct: parseJsonArray(json['list_de_id_product'], (x) => x as int) ?? [],
+      listDeIdQuantity: parseJsonArray(json['list_de_id_quantity'], (x) => x as int) ?? [],
       etap: json['etap'] as String? ?? 'En attente',
       descriptionCommande: json['description_commande'] as String?,
-      listDeDescriptionCommande: json['list_de_description_commande'] != null
-          ? List<String>.from(json['list_de_description_commande'].map((x) => x as String))
-          : null,
-      listDeEmployeFaireChangementACommande: json['list_de_employee_faire_changement_a_commande'] != null
-          ? List<int>.from(json['list_de_employee_faire_changement_a_commande'].map((x) => x as int))
-          : null,
+      listDeDescriptionCommande:
+          parseJsonArray(json['list_de_description_commande'], (x) => x as String),
+      listDeEmployeFaireChangementACommande: parseJsonArray(
+          json['list_de_employée_faire_changement_a_commande'], (x) => x as int),
       paymentMode: json['paymentMode'] as String? ?? '',
       deliveryMode: json['deliveryMode'] as String? ?? '',
       receptionDate: json['receptionDate'] != null
@@ -79,6 +98,7 @@ class Commande {
       createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
       updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? '') ?? DateTime.now(),
       payment_status: json['payment_status'] as int? ?? 0,
+      selected_price: json['selected_price'] as String? ?? 'details',
     );
   }
 
@@ -92,7 +112,7 @@ class Commande {
       'etap': etap,
       'description_commande': descriptionCommande,
       'list_de_description_commande': listDeDescriptionCommande,
-      'list_de_employee_faire_changement_a_commande': listDeEmployeFaireChangementACommande,
+      'list_de_employée_faire_changement_a_commande': listDeEmployeFaireChangementACommande,
       'paymentMode': paymentMode,
       'deliveryMode': deliveryMode,
       'receptionDate': receptionDate?.toIso8601String(),
@@ -104,9 +124,11 @@ class Commande {
       'user_name': userName,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'payment_status': payment_status,
+      'selected_price': selected_price,
     };
   }
- // toString method
+
   @override
   String toString() {
     return 'Commande{id: $id, bakeryId: $bakeryId, userId: $userId, etap: $etap, '

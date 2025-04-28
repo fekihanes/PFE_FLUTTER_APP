@@ -8,6 +8,9 @@ class PrimaryMaterial {
   final String image;
   final int minQuantity;
   final int maxQuantity;
+  final int enable;
+  final String cost;
+
    int reelQuantity;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -23,6 +26,8 @@ class PrimaryMaterial {
     required this.maxQuantity,
     required this.reelQuantity,
     required this.image,
+    required this.cost,
+    required this.enable,
     required this.createdAt,
     required this.updatedAt,
     required this.bakery, // Added bakery
@@ -30,13 +35,16 @@ class PrimaryMaterial {
 
   // FromJson: Create an instance from a map (usually from a server response)
   factory PrimaryMaterial.fromJson(Map<String, dynamic> json) {
-    var bakeryJson = json['bakery'] as Map<String, dynamic>;
-    Bakery bakery = Bakery.fromJson(bakeryJson);
+    Bakery bakery = json.containsKey('bakery') && json['bakery'] != null
+      ? Bakery.fromJson(json['bakery'])
+      : Bakery.empty(); // Ajoute une méthode `empty()` dans ta classe Bak
     return PrimaryMaterial(
       id: json['id'] ?? 0,
       bakeryId: json['bakery_id'] ?? 0,
       name: json['name'] ?? '',
       unit: json['unit'] ?? '',
+      cost: json['cost'] ?? '0',
+      enable: json['enable'] ?? 0,
       minQuantity: json['min_quantity'] ?? 0,
       maxQuantity: json['max_quantity'] ?? 0,
       reelQuantity: json['reel_quantity'] ?? 0,

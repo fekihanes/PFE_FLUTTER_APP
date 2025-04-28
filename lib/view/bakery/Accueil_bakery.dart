@@ -1,16 +1,20 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Bakery.dart';
 import 'package:flutter_application/classes/Product.dart';
+import 'package:flutter_application/classes/ScrollingText.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
 import 'package:flutter_application/custom_widgets/customSnackbar.dart';
-import 'package:flutter_application/services/Notification/NotificationService.dart';
-import 'package:flutter_application/services/manager/manager_service.dart';
+import 'package:flutter_application/services/Bakery/bakery_service.dart';
+import 'package:flutter_application/services/emloyees/InvoiceService.dart';
 import 'package:flutter_application/services/users/CommandeService.dart';
 import 'package:flutter_application/services/users/bakeries_service.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AccueilBakery extends StatefulWidget {
   final Map<Product, int> products_selected;
@@ -18,11 +22,12 @@ class AccueilBakery extends StatefulWidget {
   const AccueilBakery({super.key, required this.products_selected});
 
   @override
-  State<AccueilBakery> createState() => _AccueilBakeryState();
+  _AccueilBakeryState createState() => _AccueilBakeryState();
 }
 
 class _AccueilBakeryState extends State<AccueilBakery> {
-  Bakery? bakery; // Changed to nullable
+  final InvoiceService _invoiceService = InvoiceService();
+  Bakery? bakery;
   List<Product> products = [];
   int currentPage = 1;
   int lastPage = 1;
@@ -33,107 +38,237 @@ class _AccueilBakeryState extends State<AccueilBakery> {
   String? nextPageUrl;
   late TextEditingController _searchController;
   String type = "all";
+  String? bakeryId = "0";
+  late Map<Product, int> _productsSelected;
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    _productsSelected = Map.from(widget.products_selected);
     _initializeData();
   }
 
   Future<void> _initializeData() async {
     setState(() => isBigLoading = true);
     try {
+      final prefs = await SharedPreferences.getInstance();
+      bakeryId = prefs.getString('role') == 'manager'
+          ? prefs.getString('my_bakery')
+          : prefs.getString('bakery_id');
+      if (bakeryId == null) {
+        throw Exception('Bakery ID not found');
+      }
       await fetchBakery();
       if (bakery != null) {
         await fetchProducts();
       } else {
-        Customsnackbar().showErrorSnackbar(context, "Failed to load bakery data");
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.errorOccurred);
       }
     } catch (e) {
-      Customsnackbar().showErrorSnackbar(context, AppLocalizations.of(context)!.errorOccurred);
+      Customsnackbar().showErrorSnackbar(
+          context, '${AppLocalizations.of(context)!.errorOccurred}: $e');
     } finally {
       setState(() => isBigLoading = false);
     }
   }
 
   Future<void> fetchBakery() async {
-    try {
-      bakery = await ManagerService().getBakery(context); // No forced unwrap
-    } catch (e) {
-      bakery = null; // Set to null on failure
-      rethrow; // Propagate error to _initializeData
-    }
+    bakery = await BakeryService().getBakery(context);
   }
 
   Future<void> fetchProducts({int page = 1}) async {
-    if (bakery == null) return; // Skip if bakery isn’t loaded
+    if (bakery == null) return;
     setState(() => isLoading = true);
-    final response = await BakeriesService().searchProducts(
-      context,
-      page: page,
-      myBakery: bakery!.id.toString(),
-      type: type,
-      query: _searchController.text.trim(),
-    );
-    setState(() {
-      isLoading = false;
-      if (response != null) {
-        products = response.data;
-        currentPage = response.currentPage;
-        lastPage = response.lastPage;
-        total = response.total;
-        prevPageUrl = response.prevPageUrl;
-        nextPageUrl = response.nextPageUrl;
-      } else {
+    try {
+      final response = await BakeriesService().searchProducts(
+        context,
+        page: page,
+        myBakery: bakery!.id.toString(),
+        type: type,
+        enable: 1,
+        query: _searchController.text.trim(),
+      );
+      setState(() {
+        if (response != null) {
+          products = response.data;
+          currentPage = response.currentPage;
+          lastPage = response.lastPage;
+          total = response.total;
+          prevPageUrl = response.prevPageUrl;
+          nextPageUrl = response.nextPageUrl;
+        } else {
+          products = [];
+        }
+      });
+    } catch (e) {
+      Customsnackbar().showErrorSnackbar(
+          context, '${AppLocalizations.of(context)!.errorOccurred}: $e');
+      setState(() {
         products = [];
-        currentPage = 1;
-        lastPage = 1;
-        total = 0;
-        prevPageUrl = null;
-        nextPageUrl = null;
-      }
-    });
+      });
+    } finally {
+      setState(() => isLoading = false);
+    }
   }
 
- Future<void> pay() async {
-    if (bakery == null || widget.products_selected.isEmpty) {
+  Future<void> pay() async {
+    if (bakery == null || _productsSelected.isEmpty) {
       Customsnackbar()
           .showErrorSnackbar(context, AppLocalizations.of(context)!.emptyCart);
       return;
     }
 
     setState(() => isLoading = true);
-    final now = DateTime.now();
-    await CommandeService().commandes_store_cash_pickup(
-      context,
-      bakeryId: bakery!.id,
-      productsSelected: widget.products_selected,
-      paymentMode: 'cash_pickup',
-      deliveryMode: 'pickup',
-      receptionDate: now.toIso8601String().split('T')[0], // e.g., "2025-04-11"
-      receptionTime:
-          "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}", // e.g., "14:07"
-      primaryAddress: 'in bakery',
-      payment_status: 1, // Start as pending
-      secondaryAddress: null,
-      secondaryPhone: null,
-      descriptionCommande: null,
-    );
-    setState(() => widget.products_selected.clear()); // Clear cart on success
-    fetchProducts(page: currentPage);
+    try {
+      final now = DateTime.now();
+      await CommandeService().commandes_store_cash_pickup(
+        context,
+        bakeryId: bakery!.id,
+        productsSelected: _productsSelected,
+        paymentMode: 'cash_pickup',
+        deliveryMode: 'pickup',
+        receptionDate: now.toIso8601String().split('T')[0],
+        receptionTime:
+            "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}",
+        primaryAddress: 'in bakery',
+        payment_status: 1,
+        secondaryAddress: null,
+        secondaryPhone: null,
+        descriptionCommande: null,
+      );
+      _showInvoiceModal();
+    } catch (e) {
+      if (context.mounted) {
+        Customsnackbar().showErrorSnackbar(
+            context, '${AppLocalizations.of(context)!.errorOccurred}: $e');
+      }
+    } finally {
+      setState(() => isLoading = false);
+    }
   }
+
+  void _showInvoiceModal() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(AppLocalizations.of(context)!.invoiceOptions),
+          content: Text(AppLocalizations.of(context)!.invoiceGenerated),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                final invoice = await _invoiceService.generateInvoice(
+                  context: context,
+                  bakeryId: bakeryId!,
+                  documentType: 'ticket',
+                  user_id: null,
+                  commande_id: null,
+                  products: _productsSelected.entries
+                      .map((entry) => {
+                            'article_id': entry.key.id,
+                            'quantity': entry.value,
+                            'price': entry.key.price,
+                          })
+                      .toList(),
+                );
+
+                await _invoiceService.printInvoice(
+                    context: context, invoiceId: invoice?['invoice_id']);
+                setState(() {
+                  _productsSelected.clear();
+                });
+                await fetchProducts(page: currentPage);
+                Navigator.of(context).pop();
+              },
+              child: Text(AppLocalizations.of(context)!.print),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                setState(() {
+                  _productsSelected.clear();
+                });
+                fetchProducts(page: currentPage);
+              },
+              child: Text(AppLocalizations.of(context)!.cancel),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          bakery != null
+              ? bakery!.name.toUpperCase()
+              : AppLocalizations.of(context)!.loadingMessage,
+          style: const TextStyle(
+              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
+        ),
+        backgroundColor: Colors.white,
+      ),
+      backgroundColor: const Color(0xFFE5E7EB),
+      drawer: const CustomDrawerManager(),
+      body: isBigLoading
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(color: Color(0xFFFB8C00)),
+                  const SizedBox(height: 20),
+                  Text(AppLocalizations.of(context)!.loadingMessage),
+                ],
+              ),
+            )
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                return Container(
+                  color: const Color(0xFFE5E7EB),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            children: [
+                              _buildContProducts(),
+                              SizedBox(height: constraints.maxHeight * 0.015),
+                              _buildFormSearch(),
+                              SizedBox(height: constraints.maxHeight * 0.015),
+                              _buildProductList(constraints),
+                              SizedBox(height: constraints.maxHeight * 0.015),
+                              _buildCart(constraints),
+                            ],
+                          ),
+                        ),
+                      ),
+                      _buildPagination(),
+                    ],
+                  ),
+                );
+              },
+            ),
+    );
+  }
+
   Widget _buildProductList(BoxConstraints constraints) {
     if (isLoading) {
       return const Center(
         heightFactor: 15,
-        child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFB8C00))),
+        child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFB8C00))),
       );
     }
 
@@ -155,17 +290,21 @@ class _AccueilBakeryState extends State<AccueilBakery> {
     double childAspectRatio;
 
     if (constraints.maxWidth < 600) {
-      crossAxisCount = 2;
-      childAspectRatio = (constraints.maxWidth / 1) / (constraints.maxHeight * 0.8);
+      crossAxisCount = 1;
+      childAspectRatio =
+          (constraints.maxWidth / 1) / (constraints.maxHeight * 0.4);
     } else if (constraints.maxWidth < 900) {
       crossAxisCount = 3;
-      childAspectRatio = (constraints.maxWidth / 2) / (constraints.maxHeight * 0.63);
+      childAspectRatio =
+          (constraints.maxWidth / 2) / (constraints.maxHeight * 0.63);
     } else if (constraints.maxWidth < 1200) {
       crossAxisCount = 4;
-      childAspectRatio = (constraints.maxWidth / 3) / (constraints.maxHeight * 0.55);
+      childAspectRatio =
+          (constraints.maxWidth / 3) / (constraints.maxHeight * 0.55);
     } else {
       crossAxisCount = 5;
-      childAspectRatio = (constraints.maxWidth / 4) / (constraints.maxHeight * 0.55);
+      childAspectRatio =
+          (constraints.maxWidth / 4) / (constraints.maxHeight * 0.55);
     }
 
     childAspectRatio = childAspectRatio.clamp(0.5, 1.5);
@@ -191,7 +330,8 @@ class _AccueilBakeryState extends State<AccueilBakery> {
           child: GestureDetector(
             onTap: () {
               setState(() {
-                widget.products_selected.update(products[index], (value) => value + 1, ifAbsent: () => 1);
+                _productsSelected.update(products[index], (value) => value + 1,
+                    ifAbsent: () => 1);
               });
             },
             child: _showInfoProduct(products[index], constraints),
@@ -243,15 +383,17 @@ class _AccueilBakeryState extends State<AccueilBakery> {
           padding: const EdgeInsets.fromLTRB(24, 0, 0, 0),
           child: Row(
             children: [
-              Text(
-                "${product.price} ${AppLocalizations.of(context)!.dt}",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: constraints.maxWidth < 600 ? 16 : 20,
-                  color: const Color(0xFFFB8C00),
+              Expanded(
+                child: Text(
+                  "${product.price} ${AppLocalizations.of(context)!.dt}",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: constraints.maxWidth < 600 ? 16 : 20,
+                    color: const Color(0xFFFB8C00),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 2,
               ),
               const Spacer(),
               Text(
@@ -262,66 +404,12 @@ class _AccueilBakeryState extends State<AccueilBakery> {
                   color: Colors.black,
                 ),
                 overflow: TextOverflow.ellipsis,
-                maxLines: 2,
+                maxLines: 1,
               ),
             ],
           ),
         ),
       ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          bakery != null ? bakery!.name.toUpperCase() : AppLocalizations.of(context)!.loadingMessage,
-          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
-        ),
-        backgroundColor: Colors.white,
-      ),
-      backgroundColor: const Color(0xFFE5E7EB),
-      drawer: const CustomDrawerManager(),
-      body: isBigLoading
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(color: Color(0xFFFB8C00)),
-                  const SizedBox(height: 20),
-                  Text(AppLocalizations.of(context)!.loadingMessage),
-                ],
-              ),
-            )
-          : LayoutBuilder(
-              builder: (context, constraints) {
-                return Container(
-                  color: const Color(0xFFE5E7EB),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(32),
-                          child: Column(
-                            children: [
-                              _buildContProducts(),
-                              SizedBox(height: constraints.maxHeight * 0.015),
-                              _buildFormSearch(),
-                              SizedBox(height: constraints.maxHeight * 0.015),
-                              _buildProductList(constraints),
-                              SizedBox(height: constraints.maxHeight * 0.015),
-                              _buildCart(constraints),
-                            ],
-                          ),
-                        ),
-                      ),
-                      _buildPagination(),
-                    ],
-                  ),
-                );
-              },
-            ),
     );
   }
 
@@ -359,7 +447,7 @@ class _AccueilBakeryState extends State<AccueilBakery> {
   }
 
   Widget _buildContCart(BoxConstraints constraints) {
-    if (widget.products_selected.isEmpty) {
+    if (_productsSelected.isEmpty) {
       return Center(
         child: Text(
           AppLocalizations.of(context)!.emptyCart,
@@ -371,7 +459,7 @@ class _AccueilBakeryState extends State<AccueilBakery> {
       );
     }
 
-    double totalPrice = widget.products_selected.entries
+    double totalPrice = _productsSelected.entries
         .fold(0, (sum, entry) => sum + (entry.key.price * entry.value));
 
     return Column(
@@ -379,9 +467,9 @@ class _AccueilBakeryState extends State<AccueilBakery> {
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: widget.products_selected.length,
+          itemCount: _productsSelected.length,
           itemBuilder: (context, index) {
-            final entry = widget.products_selected.entries.elementAt(index);
+            final entry = _productsSelected.entries.elementAt(index);
             return _buildCartItem(entry.key, entry.value, constraints);
           },
         ),
@@ -420,7 +508,7 @@ class _AccueilBakeryState extends State<AccueilBakery> {
           children: [
             Expanded(flex: 2, child: _buildButtonCheckout(constraints)),
             SizedBox(width: constraints.maxWidth * 0.02),
-            Expanded(flex: 1, child: _buildButtonClear(constraints)),
+            Expanded(flex: 2, child: _buildButtonClear(constraints)),
           ],
         ),
       ],
@@ -433,7 +521,7 @@ class _AccueilBakeryState extends State<AccueilBakery> {
         backgroundColor: Colors.red,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
-      onPressed: () => setState(() => widget.products_selected.clear()),
+      onPressed: () => setState(() => _productsSelected.clear()),
       child: Text(
         AppLocalizations.of(context)!.cancel,
         style: TextStyle(
@@ -463,7 +551,8 @@ class _AccueilBakeryState extends State<AccueilBakery> {
     );
   }
 
-  Widget _buildCartItem(Product product, int quantity, BoxConstraints constraints) {
+  Widget _buildCartItem(
+      Product product, int quantity, BoxConstraints constraints) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -472,56 +561,71 @@ class _AccueilBakeryState extends State<AccueilBakery> {
       ),
       child: Row(
         children: [
-          Container(
-            height: constraints.maxWidth < 600 ? 25 : 40,
-            width: constraints.maxWidth < 600 ? 25 : 40,
-            decoration: const BoxDecoration(
-              color: Color(0xFFFB8C00),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: IconButton(
-                icon: Icon(Icons.remove, size: constraints.maxWidth < 600 ? 20 : 24),
-                onPressed: () => _updateQuantity(product, quantity - 1),
-                color: Colors.white,
-                padding: EdgeInsets.zero,
-              ),
-            ),
-          ),
-          const SizedBox(width: 3),
-          Text(
-            "$quantity",
-            style: TextStyle(
-              fontSize: constraints.maxWidth < 600 ? 18 : 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(width: 3),
-          Container(
-            height: constraints.maxWidth < 600 ? 25 : 40,
-            width: constraints.maxWidth < 600 ? 25 : 40,
-            decoration: const BoxDecoration(
-              color: Color(0xFFFB8C00),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: IconButton(
-                icon: Icon(Icons.add, size: constraints.maxWidth < 600 ? 20 : 24),
-                onPressed: () => _updateQuantity(product, quantity + 1),
-                color: Colors.white,
-                padding: EdgeInsets.zero,
-              ),
-            ),
-          ),
           const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              product.name,
-              style: TextStyle(
-                fontSize: constraints.maxWidth < 600 ? 16 : 18,
-                fontWeight: FontWeight.bold,
+          Column(
+            children: [
+              Text(
+                product.name,
+                style: TextStyle(
+                  fontSize: constraints.maxWidth < 600 ? 12 : 16,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
-            ),
+              const SizedBox(height: 5),
+              Row(
+                children: [
+                  Container(
+                    height: constraints.maxWidth < 600 ? 25 : 40,
+                    width: constraints.maxWidth < 600 ? 25 : 40,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFB8C00),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: IconButton(
+                        icon: Icon(Icons.remove,
+                            size: constraints.maxWidth < 600 ? 20 : 24),
+                        onPressed: () => _updateQuantity(product, quantity - 1),
+                        color: Colors.white,
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  SizedBox(
+                    width: 30,
+                    child: Text(
+                      "$quantity",
+                      style: TextStyle(
+                        fontSize: constraints.maxWidth < 600 ? 18 : 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  Container(
+                    height: constraints.maxWidth < 600 ? 25 : 40,
+                    width: constraints.maxWidth < 600 ? 25 : 40,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFB8C00),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: IconButton(
+                        icon: Icon(Icons.add,
+                            size: constraints.maxWidth < 600 ? 20 : 24),
+                        onPressed: () => _updateQuantity(product, quantity + 1),
+                        color: Colors.white,
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           const SizedBox(width: 10),
           Text(
@@ -532,7 +636,8 @@ class _AccueilBakeryState extends State<AccueilBakery> {
             ),
           ),
           IconButton(
-            icon: Icon(Icons.delete_outline, size: constraints.maxWidth < 600 ? 20 : 24, color: Colors.red),
+            icon: Icon(Icons.delete_outline,
+                size: constraints.maxWidth < 600 ? 20 : 24, color: Colors.red),
             onPressed: () => _removeProduct(product),
           ),
         ],
@@ -543,16 +648,16 @@ class _AccueilBakeryState extends State<AccueilBakery> {
   void _updateQuantity(Product product, int newQuantity) {
     setState(() {
       if (newQuantity > 0) {
-        widget.products_selected[product] = newQuantity;
+        _productsSelected[product] = newQuantity;
       } else {
-        widget.products_selected.remove(product);
+        _productsSelected.remove(product);
       }
     });
   }
 
   void _removeProduct(Product product) {
     setState(() {
-      widget.products_selected.remove(product);
+      _productsSelected.remove(product);
     });
   }
 
@@ -633,7 +738,8 @@ class _AccueilBakeryState extends State<AccueilBakery> {
       padding: const EdgeInsets.all(8.0),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: pageLinks),
+        child: Row(
+            mainAxisAlignment: MainAxisAlignment.center, children: pageLinks),
       ),
     );
   }
@@ -663,7 +769,8 @@ class _AccueilBakeryState extends State<AccueilBakery> {
               decoration: InputDecoration(
                 labelText: AppLocalizations.of(context)!.searchByName,
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0)),
               ),
             ),
             const SizedBox(height: 10),
@@ -674,14 +781,21 @@ class _AccueilBakeryState extends State<AccueilBakery> {
                 fetchProducts();
               },
               items: [
-                DropdownMenuItem(value: "all", child: Text(AppLocalizations.of(context)!.all)),
-                DropdownMenuItem(value: "Salty", child: Text(AppLocalizations.of(context)!.salty)),
-                DropdownMenuItem(value: "Sweet", child: Text(AppLocalizations.of(context)!.sweet)),
+                DropdownMenuItem(
+                    value: "all",
+                    child: Text(AppLocalizations.of(context)!.all)),
+                DropdownMenuItem(
+                    value: "Salty",
+                    child: Text(AppLocalizations.of(context)!.salty)),
+                DropdownMenuItem(
+                    value: "Sweet",
+                    child: Text(AppLocalizations.of(context)!.sweet)),
               ],
               decoration: InputDecoration(
                 filled: true,
                 fillColor: Colors.grey[400],
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30.0)),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30.0)),
               ),
             ),
           ],
@@ -697,7 +811,10 @@ class _AccueilBakeryState extends State<AccueilBakery> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.grey.withOpacity(0.3), spreadRadius: 2, blurRadius: 5),
+          BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5),
         ],
       ),
       child: Row(
@@ -706,45 +823,54 @@ class _AccueilBakeryState extends State<AccueilBakery> {
           Flexible(
             child: Text(
               AppLocalizations.of(context)!.totalProducts,
-              style: const TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(width: 10),
           Text(
             total.toString(),
-            style: const TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+                color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
           ),
         ],
       ),
     );
   }
+}
 
-//  Future<void> pay() async {
-//     if (bakery == null || widget.products_selected.isEmpty) {
-//       Customsnackbar()
-//           .showErrorSnackbar(context, AppLocalizations.of(context)!.emptyCart);
-//       return;
-//     }
+class PermissionAlertDialog extends StatelessWidget {
+  final String message;
 
-//     setState(() => isLoading = true);
-//     final now = DateTime.now();
-//     await CommandeService().commandes_store_cash_pickup(
-//       context,
-//       bakeryId: bakery!.id,
-//       productsSelected: widget.products_selected,
-//       paymentMode: 'cash_pickup',
-//       deliveryMode: 'pickup',
-//       receptionDate: now.toIso8601String().split('T')[0], // e.g., "2025-04-11"
-//       receptionTime:
-//           "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}", // e.g., "14:07"
-//       primaryAddress: 'in bakery',
-//       payment_status: 1, // Start as pending
-//       secondaryAddress: null,
-//       secondaryPhone: null,
-//       descriptionCommande: null,
-//     );
-//     setState(() => widget.products_selected.clear()); // Clear cart on success
-//     setState(() => isLoading = false);
-//   }
+  const PermissionAlertDialog({super.key, required this.message});
 
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(AppLocalizations.of(context)!.permissionRequired),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(message),
+          const SizedBox(height: 20),
+          Text(AppLocalizations.of(context)!.enableManually),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(AppLocalizations.of(context)!.cancel),
+        ),
+        TextButton(
+          onPressed: () async {
+            await openAppSettings();
+            Navigator.pop(context);
+          },
+          child: Text(AppLocalizations.of(context)!.settings),
+        ),
+      ],
+    );
+  }
 }

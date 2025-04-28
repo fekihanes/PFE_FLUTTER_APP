@@ -16,6 +16,8 @@ class Traductions {
         return AppLocalizations.of(context)!.admin;
       case 'manager':
         return AppLocalizations.of(context)!.manager;
+      case 'special_customer':
+        return AppLocalizations.of(context)!.special_customer;
       default:
         return AppLocalizations.of(context)!.user;
     }
@@ -75,6 +77,23 @@ class Traductions {
   ];
   return days[date.weekday % 7]; // % 7 pour que Dimanche soit bien indexé à 0
 }
+getEtapCommande(String etap, BuildContext context) {
+  switch (etap) {
+    case 'terminee':
+      return AppLocalizations.of(context)!.terminee;
+    case 'Annulees':
+      return AppLocalizations.of(context)!.annulee;
+    case 'en comptoir':
+      return AppLocalizations.of(context)!.en_comptoir;
+    case 'livraison':
+      return AppLocalizations.of(context)!.livraison;
+    case 'en attente':
+      return AppLocalizations.of(context)!.en_attente;
+    case 'en cours':
+      return AppLocalizations.of(context)!.en_cours;
+    default:
+      return AppLocalizations.of(context)!.terminee;
+}
 
-
+}
 }

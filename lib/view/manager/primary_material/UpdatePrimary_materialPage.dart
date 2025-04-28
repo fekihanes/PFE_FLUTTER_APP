@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_application/classes/PrimaryMaterial.dart';
 import 'package:flutter_application/custom_widgets/CustomTextField.dart';
 import 'package:flutter_application/custom_widgets/ImageInput.dart';
-import 'package:flutter_application/services/manager/manager_service.dart';
+import 'package:flutter_application/services/Bakery/bakery_service.dart';
+import 'package:flutter_application/view/manager/primary_material/gestion_de_stock.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:typed_data';
@@ -24,8 +26,9 @@ class UpdateprimaryMaterialPage extends StatefulWidget {
 class _UpdateprimaryMaterialPageState extends State<UpdateprimaryMaterialPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
-  late TextEditingController _quantity_max_Controller;
+  late TextEditingController _quantity_max_Controller=TextEditingController();
   late TextEditingController _quantity_min_Controller =TextEditingController();
+  late TextEditingController _cost_Controller =TextEditingController();
   String? _isUnitSelected ;
   String? _oldImage;
   String? _imagePath;
@@ -36,11 +39,12 @@ class _UpdateprimaryMaterialPageState extends State<UpdateprimaryMaterialPage> {
   void initState() {
     super.initState();
         WidgetsBinding.instance.addPostFrameCallback((_) {
-      ManagerService().havebakery(context);
+      BakeryService().havebakery(context);
     });
     _nameController = TextEditingController(text: widget.primaryMaterial.name);
     _quantity_max_Controller = TextEditingController(text: widget.primaryMaterial.maxQuantity.toString());
     _quantity_min_Controller = TextEditingController(text: widget.primaryMaterial.minQuantity.toString());
+    _cost_Controller = TextEditingController(text: widget.primaryMaterial.cost.toString());
     _isUnitSelected = widget.primaryMaterial.unit;
     _oldImage = widget.primaryMaterial.image;
     _imagePath = widget.primaryMaterial.image;
@@ -66,11 +70,18 @@ class _UpdateprimaryMaterialPageState extends State<UpdateprimaryMaterialPage> {
         _isUnitSelected ?? '',
         _quantity_min_Controller.text,
         _quantity_max_Controller.text,
+        _cost_Controller.text,
         image,
         _oldImage!,
         context,
       );
     }
+             Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const GestionDeStoke(),
+                ),
+              );
   }
 
   @override
@@ -84,64 +95,96 @@ class _UpdateprimaryMaterialPageState extends State<UpdateprimaryMaterialPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              CustomTextField(
-                controller: _nameController,
-                labelText: AppLocalizations.of(context)!.primary_material_Name,
-                icon: Icons.shopping_cart,
-                validator: (value) {
-                  if (value!.isEmpty) {
-                    return AppLocalizations.of(context)!.requiredField;
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              CustomTextField(
-                controller: _quantity_max_Controller,
-                labelText:
-                    AppLocalizations.of(context)!.primary_material_max_quantity,
-                icon: FontAwesomeIcons.cubes,
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return AppLocalizations.of(context)!.requiredField;
-                  }
-                  int? quantityMax = int.tryParse(value);
-                  if (quantityMax == null || quantityMax <= 0) {
-                    return AppLocalizations.of(context)!.invalidQuantities;
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              CustomTextField(
-                controller: _quantity_min_Controller,
-                labelText:
-                    AppLocalizations.of(context)!.primary_material_min_quantity,
-                icon: FontAwesomeIcons.cubes,
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return AppLocalizations.of(context)!.requiredField;
-                  }
-                  int? quantityMin = int.tryParse(value);
-                  if (quantityMin == null || quantityMin <= 0) {
-                    return AppLocalizations.of(context)!.invalidQuantities;
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              _buildToggleButtons(context),
-              const SizedBox(height: 20),
-              _buildImageInputWidget(),
-            ],
+      body: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: MediaQuery.of(context).size.height,
+        ),
+        child: SingleChildScrollView(
+          physics: AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CustomTextField(
+                  controller: _cost_Controller,
+                  labelText: AppLocalizations.of(context)!.cost,
+                  icon: Icons.monetization_on_outlined,
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*\.?\d{0,2}')), // max 2 décimales
+                  ],
+
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return AppLocalizations.of(context)!.please_enter_a_cost;
+                    }
+                    final cost = double.tryParse(value);
+                    if (cost == null) {
+                      return AppLocalizations.of(context)!.please_enter_a_valid_number;
+                    }
+                    if (cost <= 0) {
+                      return AppLocalizations.of(context)!.cost_must_be_greater_than_zero;
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 20),
+                CustomTextField(
+                  controller: _nameController,
+                  labelText: AppLocalizations.of(context)!.primary_material_Name,
+                  icon: Icons.shopping_cart,
+                  validator: (value) {
+                    if (value!.isEmpty) {
+                      return AppLocalizations.of(context)!.requiredField;
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                CustomTextField(
+                  controller: _quantity_max_Controller,
+                  labelText:
+                      AppLocalizations.of(context)!.primary_material_max_quantity,
+                  icon: FontAwesomeIcons.cubes,
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return AppLocalizations.of(context)!.requiredField;
+                    }
+                    int? quantityMax = int.tryParse(value);
+                    if (quantityMax == null || quantityMax <= 0) {
+                      return AppLocalizations.of(context)!.invalidQuantities;
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                CustomTextField(
+                  controller: _quantity_min_Controller,
+                  labelText:
+                      AppLocalizations.of(context)!.primary_material_min_quantity,
+                  icon: FontAwesomeIcons.cubes,
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return AppLocalizations.of(context)!.requiredField;
+                    }
+                    int? quantityMin = int.tryParse(value);
+                    if (quantityMin == null || quantityMin <= 0) {
+                      return AppLocalizations.of(context)!.invalidQuantities;
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                _buildToggleButtons(context),
+                const SizedBox(height: 20),
+                _buildImageInputWidget(),
+              ],
+            ),
           ),
         ),
       ),

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application/custom_widgets/CustomTextField.dart';
+import 'package:flutter_application/custom_widgets/LanguageSelector.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/view/admin/home_page_admin.dart';
-import 'package:flutter_application/view/employees/Boulanger/gestionDeStokeEnComptoir.dart';
+import 'package:flutter_application/view/employees/Boulanger/MelangeListPage.dart';
 import 'package:flutter_application/view/manager/Editing_the_bakery_profile.dart';
 import 'package:flutter_application/view/manager/page_management_employees.dart';
+import 'package:flutter_application/view/special_customer/special_customerPageAccueilBakery.dart';
 import 'package:flutter_application/view/user/page_find_bahery.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -26,6 +28,8 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _adresseController = TextEditingController();
+  final TextEditingController _cinController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _passwordConfirmationController =
       TextEditingController();
@@ -48,6 +52,8 @@ class _LoginPageState extends State<LoginPage> {
           _nameController.text.trim(),
           _phoneController.text.trim(),
           _emailController.text.trim(),
+          _cinController.text.trim(),
+          _adresseController.text.trim(),
           _passwordController.text.trim(),
           _passwordConfirmationController.text.trim(),
           context,
@@ -81,7 +87,7 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-                builder: (context) => const Gestiondestokeencomptoir()));
+                builder: (context) => const MelangeListPage()));
         break;
       case 'admin':
         Navigator.pushReplacement(context,
@@ -96,6 +102,10 @@ class _LoginPageState extends State<LoginPage> {
       case 'user':
         Navigator.pushReplacement(context,
             MaterialPageRoute(builder: (context) => const PageFindBahery()));
+        break;
+      case 'special_customer':
+        Navigator.pushReplacement(context,
+            MaterialPageRoute(builder: (context) =>  special_customerPageAccueilBakery(products_selected: {}),));
         break;
       default:
         _showSuccessSnackbar("Unknown role");
@@ -200,6 +210,7 @@ class _LoginPageState extends State<LoginPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          LanguageSelector(),
           Expanded(
             flex: 5,
             child: _buildImage(context),
@@ -220,9 +231,43 @@ class _LoginPageState extends State<LoginPage> {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
+          LanguageSelector(),
+          const SizedBox(height: 20),
           _buildImage(context),
           const SizedBox(height: 40),
           _buildFormContainer(localization),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormContent(AppLocalizations localization) {
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildToggleButtons(localization),
+          const SizedBox(height: 30),
+          if (!_isConnexionSelected) ...[
+            _buildNameField(localization),
+            const SizedBox(height: 15),
+            _buildPhoneField(localization),
+            const SizedBox(height: 15),
+            _buildCinField(localization),
+            const SizedBox(height: 15),
+            _builAdresseField(localization),
+            const SizedBox(height: 15),
+          ],
+          _buildEmailField(localization),
+          const SizedBox(height: 15),
+          _buildPasswordField(localization),
+          if (!_isConnexionSelected) const SizedBox(height: 15),
+          if (!_isConnexionSelected)
+            _buildPasswordConfirmationField(localization),
+          const SizedBox(height: 20),
+          if (_isConnexionSelected) _buildForgotPassword(localization),
+          const SizedBox(height: 30),
+          _buildSubmitButton(localization),
         ],
       ),
     );
@@ -283,32 +328,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildFormContent(AppLocalizations localization) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildToggleButtons(localization),
-        const SizedBox(height: 30),
-        if (!_isConnexionSelected) ...[
-          _buildNameField(localization),
-          const SizedBox(height: 15),
-          _buildPhoneField(localization),
-          const SizedBox(height: 15),
-        ],
-        _buildEmailField(localization),
-        const SizedBox(height: 15),
-        _buildPasswordField(localization),
-        if (!_isConnexionSelected) const SizedBox(height: 15),
-        if (!_isConnexionSelected)
-          _buildPasswordConfirmationField(localization),
-        const SizedBox(height: 20),
-        if (_isConnexionSelected) _buildForgotPassword(localization),
-        const SizedBox(height: 30),
-        _buildSubmitButton(localization),
-      ],
-    );
-  }
-
   Widget _buildToggleButtons(AppLocalizations localization) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -364,6 +383,45 @@ class _LoginPageState extends State<LoginPage> {
         if (value == null || value.isEmpty) return localization.emailRequired;
         if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
           return localization.invalidEmail;
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildCinField(AppLocalizations localization) {
+    return CustomTextField(
+      controller: _cinController,
+      labelText: localization.cin,
+      icon: Icons.call_to_action_rounded,
+      keyboardType: TextInputType.number,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return localization.cinRequired;
+        }
+        if (value.length != 8) {
+          return localization.cinLengthError;
+        }
+        if (!RegExp(r'^[01][0-9]{7}$').hasMatch(value)) {
+          return localization.invalidCin;
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _builAdresseField(AppLocalizations localization) {
+    return CustomTextField(
+      controller: _adresseController,
+      labelText: localization.adresse,
+      icon: Icons.location_on,
+      keyboardType: TextInputType.streetAddress,
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return localization.adresseRequired;
+        }
+        if (value.trim().length < 15) {
+          return localization.adresseTooShort;
         }
         return null;
       },

@@ -2,15 +2,16 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedUserResponse.dart';
+import 'package:flutter_application/classes/user_class.dart';
 import 'package:flutter_application/custom_widgets/customSnackbar.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 class ManagementEmployeesService {
   static String baseUrl = ApiConfig.baseUrlManager;
+  static String baseUrlv = ApiConfig.baseUrl;
   final http.Client _client = http.Client();
 
   Future<PaginatedUserResponse?> searchemployees(
@@ -146,8 +147,63 @@ class ManagementEmployeesService {
           context, AppLocalizations.of(context)!.networkError);
     }
   }
+  Future<void> update_selected_price(int userId, String selected_price, context) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('auth_token');
 
-  
+      if (token == null) {
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.tokenNotFound);
+        return;
+      }
+      final response = await _client.put(
+        Uri.parse('${baseUrl}update_selected_price/$userId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'selected_price': selected_price}),
+      );
+
+      if (response.statusCode == 200) {
+        Customsnackbar().showSuccessSnackbar(
+            context, AppLocalizations.of(context)!.roleUpdated);
+      } else if (response.statusCode == 422) {
+        final jsonResponse = jsonDecode(await response.body);
+
+        Customsnackbar().showErrorSnackbar(context, jsonResponse['message']);
+      } else if (response.statusCode == 405) {
+        bool refreshed = await AuthService().refreshToken();
+        if (refreshed) {
+          return update_selected_price(userId, selected_price, context);
+        } else {
+          await AuthService().expaildtokent(context);
+          return;
+        }
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        final jsonResponse = jsonDecode(response.body);
+        String message = jsonResponse['message'] ?? 'Unauthenticated.';
+        if (message == 'Unauthenticated.') {
+          bool refreshed = await AuthService().refreshToken();
+          if (refreshed) {
+            return update_selected_price(userId, selected_price, context);
+          } else {
+            await AuthService().expaildtokent(context);
+            return;
+          }
+        }
+        Customsnackbar().showErrorSnackbar(context, message);
+      } else {
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.errorOccurred);
+      }
+    } catch (e) {
+      Customsnackbar().showErrorSnackbar(
+          context, AppLocalizations.of(context)!.networkError);
+    }
+  }
 
   Future<PaginatedUserResponse?> searchUsers(
     BuildContext context, {
@@ -225,7 +281,73 @@ class ManagementEmployeesService {
     }
   }
 
+  Future<List<UserClass>?> getSpecialCustomerUsers(BuildContext context) async {
+    int test200 = 0;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('auth_token');
 
+      if (token == null) {
+        Customsnackbar().showErrorSnackbar(context, AppLocalizations.of(context)!.tokenNotFound);
+        return null;
+      }
 
+      String? idBakery = prefs.getString('my_bakery') ?? prefs.getString('bakery_id');
+      if (idBakery == null) {
+        Customsnackbar().showErrorSnackbar(context, 'Bakery ID not found');
+        return null;
+      }
 
+      final uri = Uri.parse('${baseUrlv}employees/getSpecialCustomerUsers')
+          .replace(queryParameters: {'idBakery': idBakery});
+
+      final response = await _client.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        test200 = 1;
+        final List<dynamic> jsonResponse = jsonDecode(response.body);
+        return jsonResponse.map((userJson) => UserClass.fromJson(userJson)).toList();
+      } else if (response.statusCode == 405) {
+        bool refreshed = await AuthService().refreshToken();
+        if (refreshed) {
+          return getSpecialCustomerUsers(context);
+        } else {
+          await AuthService().expaildtokent(context);
+          return null;
+        }
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        final jsonResponse = jsonDecode(response.body);
+        String message = jsonResponse['message'] ?? 'Unauthenticated.';
+        if (message == 'Unauthenticated.') {
+          bool refreshed = await AuthService().refreshToken();
+          if (refreshed) {
+            return getSpecialCustomerUsers(context);
+          } else {
+            await AuthService().expaildtokent(context);
+            return null;
+          }
+        }
+        Customsnackbar().showErrorSnackbar(context, message);
+        return null;
+      } else {
+        if (test200 == 0) {
+        
+        Customsnackbar().showErrorSnackbar(context, AppLocalizations.of(context)!.errorOccurred);
+      }
+        return null;
+      }
+    } catch (e) {
+      if (test200 == 0) {
+        
+      Customsnackbar().showErrorSnackbar(context, 'Error: ${e.toString()}');
+      }
+      return null;
+    }
+  }
 }

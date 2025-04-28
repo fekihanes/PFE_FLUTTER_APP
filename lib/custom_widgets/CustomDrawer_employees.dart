@@ -4,9 +4,9 @@ import 'package:flutter_application/custom_widgets/UserProfileImageState.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/view/Login_page.dart';
 import 'package:flutter_application/view/employees/Boulanger/CommandeOneByOnePage.dart';
-import 'package:flutter_application/view/employees/Boulanger/gestionDeStokeEnComptoir.dart';
+import 'package:flutter_application/view/employees/Boulanger/MelangeListPage.dart'; // Added
+import 'package:flutter_application/view/employees/Boulanger/SelectMaterialsPage.dart';
 import 'package:flutter_application/view/manager/primary_material/gestion_de_stock.dart';
-import 'package:flutter_application/view/user/Editer_le_profil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -52,56 +52,62 @@ class _CustomDrawerEmployeesState extends State<CustomDrawerEmployees> {
             child: ListView(
               children: [
                 ListTile(
-                  leading:
-                      const Icon(Icons.dashboard, color: Color(0xFFFB8C00)),
+                  leading: const Icon(Icons.dashboard, color: Color(0xFFFB8C00)),
                   title: Text(AppLocalizations.of(context)!.dashboard),
                   onTap: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) =>
-                              const Gestiondestokeencomptoir()),
-                    );
+                    // Navigator.pushReplacement(
+                    //   context,
+                    //   MaterialPageRoute(
+                    //       builder: (context) => const ()),
+                    // );
                   },
                 ),
                 ListTile(
-                  leading:
-                      const Icon(Icons.store, color: Color(0xFFFB8C00)),
+                  leading: const Icon(Icons.store, color: Color(0xFFFB8C00)),
                   title: Text(AppLocalizations.of(context)!.bakeryManagement),
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                          builder: (context) =>
-                              const CommandeOneByOnePage()),
+                          builder: (context) => const CommandeOneByOnePage()),
                     );
                   },
                 ),
                 ListTile(
-                  leading:
-                      const Icon(Icons.inventory, color: Color(0xFFFB8C00)),
+                  leading: const Icon(Icons.inventory, color: Color(0xFFFB8C00)),
                   title: Text(AppLocalizations.of(context)!.stockManagement),
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                          builder: (context) =>
-                              const GestionDeStoke()),
+                          builder: (context) => const GestionDeStoke()),
                     );
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.person, color: Color(0xFFFB8C00)),
-                  title: Text(AppLocalizations.of(context)!.editProfile),
+                  leading: const Icon(Icons.list_alt, color: Color(0xFFFB8C00)),
+                  title: Text(AppLocalizations.of(context)?.melangeList ?? 'Liste des Mélanges'),
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const MelangeListPage()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.restore_page_outlined, color: Color(0xFFFB8C00)),
+                  title: Text(AppLocalizations.of(context)!.selectMaterials),
                   onTap: () async {
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const EditerLeProfil()),
+                          builder: (context) => const SelectMaterialsPage()),
                     );
                     _loadUserData(); // Recharger les données après édition
                   },
                 ),
+                
                 const Divider(),
                 LanguageSelector(),
                 const Divider(),
@@ -127,12 +133,13 @@ class _CustomDrawerEmployeesState extends State<CustomDrawerEmployees> {
 
   Widget _buildUserHeader(BuildContext context) {
     return UserAccountsDrawerHeader(
-        decoration: const BoxDecoration(color: Color(0xFFFB8C00)),
-        accountName: Text(
-          userName,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        accountEmail: Text(userEmail),
-        currentAccountPicture: const UserProfileImage());
+      decoration: const BoxDecoration(color: Color(0xFFFB8C00)),
+      accountName: Text(
+        userName,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+      ),
+      accountEmail: Text(userEmail),
+      currentAccountPicture: const UserProfileImage(),
+    );
   }
 }

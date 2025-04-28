@@ -95,6 +95,7 @@ class BakeriesService {
     required int page,
     required String myBakery,
     required String type,
+    required int enable,    
     String? query, // Optional parameter
   }) async {
     int test200 = 0;
@@ -111,6 +112,7 @@ class BakeriesService {
       // Create queryParams with only the page parameter, and optionally the query if it exists
       Map<String, String> queryParams = {
         'page': page.toString(),
+        'enable': enable.toString(),
       };
 
       if (type!="all") {
@@ -143,7 +145,7 @@ class BakeriesService {
         if (refreshed) {
           // Retry after successful refresh
           return searchProducts(context,
-              page: page, myBakery: myBakery,type: type, query: query); // Retry with same query
+              page: page, myBakery: myBakery,type: type,enable: enable, query: query); // Retry with same query
         } else {
           // Refresh failed, show error
           await AuthService().expaildtokent(context);
@@ -156,7 +158,7 @@ class BakeriesService {
           bool refreshed = await AuthService().refreshToken();
           if (refreshed) {
              return searchProducts(context,
-              page: page, myBakery: myBakery,type: type, query: query); 
+              page: page, myBakery: myBakery,type: type,enable: enable, query: query); 
           } else {
             await AuthService().expaildtokent(context);
             return null;

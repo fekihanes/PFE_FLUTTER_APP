@@ -63,18 +63,34 @@
 		</dict>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Nous avons besoin de votre localisation pour afficher votre adresse.</string>
+	<string>We need your location to provide location-based services.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Nous avons besoin de votre localisation en arrière-plan.</string>
 	<key>UIBackgroundModes</key>
 	<array>
-    <string>fetch</string>
-    <string>processing</string>
+		<string>fetch</string>
+		<string>remote-notification</string>
 	</array>
-	<key>UIBackgroundModes</key>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Need access to save invoices</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>Need access to save invoices</string>
+	<key>CFBundleURLTypes</key>
 	<array>
-	<string>fetch</string>
-	<string>remote-notification</string>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.example.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>http</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>http</string>
 	</array>
 </dict>
 </plist>

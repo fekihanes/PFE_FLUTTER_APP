@@ -116,8 +116,6 @@ class _PasseCommandeState extends State<PasseCommande> {
           _buildTotalSection(localization),
           const SizedBox(height: 20),
           _buildDescriptionField(localization),
-          const SizedBox(height: 20),
-          _buildAddressField(localization),
           const SizedBox(height: 30),
           _buildSubmitButton(localization, context),
         ],
@@ -142,11 +140,24 @@ class _PasseCommandeState extends State<PasseCommande> {
           isReadOnly: true,
         ),
         const SizedBox(height: 15),
+        _buildAddressField(localization),
+        const SizedBox(height: 15),
         _buildFormField(
           controller: _secondaryPhoneController,
           label: localization.secondaryPhone,
           icon: Icons.phone_iphone,
           keyboardType: TextInputType.phone,
+          validator: (value) {
+            if (value != null && value.isNotEmpty) {
+              if (value.length != 8) {
+                return AppLocalizations.of(context)!.phoneLengthError;
+              }
+              if (!RegExp(r'^\d{8}$').hasMatch(value)) {
+                return AppLocalizations.of(context)!.phoneLengthError;
+              }
+            }
+            return null;
+          },
         ),
         const SizedBox(height: 15),
         _buildFormField(
@@ -636,8 +647,8 @@ class _PasseCommandeState extends State<PasseCommande> {
     final total = widget.products_selected.entries
         .fold(0.0, (sum, entry) => sum + (entry.key.price * entry.value));
 
-    const double deliveryFee =
-        1.0; // Remplace ceci par le vrai tarif de livraison
+    double? deliveryFee = widget.bakery.deliveryFee ??
+        0; // Remplace ceci par le vrai tarif de livraison
 
     return Card(
       color: Colors.white,
@@ -866,5 +877,4 @@ class _PasseCommandeState extends State<PasseCommande> {
               )),
     );
   }
-
 }

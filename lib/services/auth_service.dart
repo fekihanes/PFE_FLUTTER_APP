@@ -1,9 +1,15 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
+import 'package:flutter_application/services/background_service.dart';
+import 'package:flutter_application/services/websocket/Background_notification_service.dart';
+import 'package:flutter_application/services/websocket/websocket_client.dart';
 import 'package:flutter_application/view/Login_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
@@ -53,25 +59,10 @@ class AuthService {
 
       final userData = json.decode(userResponse.body);
       if (userData['email_verified_at'] == null) {
-        int resResendverification = await resendVerification(token);
-        if (resResendverification == 1) {
-          print(AppLocalizations.of(context)!.verification_email_resent);
-        }
-        try {
-          await _client.post(
-            Uri.parse('${baseUrl}logout'),
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Accept': 'application/json',
-            },
-          );
-        } catch (e) {
-          return {
-            'success': false,
-            'error': AppLocalizations.of(context)!.logout_failed
-          };
-        }
-        throw Exception(AppLocalizations.of(context)!.unverified_email);
+        return {
+          'success': false,
+          'error': AppLocalizations.of(context)!.logout_failed
+        };
       }
 
       await _saveToken(token);
@@ -84,8 +75,12 @@ class AuthService {
       await prefs.setString('name', userData['name'] ?? '');
       await prefs.setString('role', userData['role'] ?? '');
       await prefs.setString('bakery_id', userData['bakery_id'].toString() ?? '');
+      await prefs.setString('selected_price', userData['selected_price'] ?? 'details');
       await prefs.setString(
           'my_bakery', userData['bakery']?['id']?.toString() ?? '');
+      if (!kIsWeb) {
+        await _initializeServices();
+      }
       return {'success': true, 'data': userData};
     } catch (e) {
       return {'success': false, 'error': e.toString()};
@@ -101,6 +96,8 @@ class AuthService {
     String name,
     String phone,
     String email,
+    String Cin,
+    String adresse,
     String password,
     String passwordConfirmation,
     context,
@@ -115,6 +112,8 @@ class AuthService {
           'name': name,
           'email': email,
           'phone': phone,
+          'cin': Cin,
+          'adresse': adresse,
           'password': password,
           'password_confirmation': passwordConfirmation,
         }),
@@ -168,6 +167,8 @@ class AuthService {
         await prefs.remove('phone');
         await prefs.remove('user_picture');
         await prefs.remove('user_id');
+        await prefs.remove('selected_price');
+        await WebsocketService.disconnect();
       } else if (response.statusCode == 401) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('refresh_token');
@@ -180,6 +181,7 @@ class AuthService {
         await prefs.remove('phone');
         await prefs.remove('user_picture');
         await prefs.remove('user_id');
+        await prefs.remove('selected_price');
       } else {
         throw Exception(AppLocalizations.of(context)!.logout_failed);
       }
@@ -220,25 +222,6 @@ class AuthService {
     }
   }
 
-  Future<int> resendVerification(String token) async {
-    try {
-      final response = await _client.post(
-        Uri.parse('${baseUrl}email/verification-notification'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        return 1;
-      }
-      return 0;
-    } catch (e) {
-      return -1;
-    }
-  }
-
   Future<bool> refreshToken() async {
     final prefs = await SharedPreferences.getInstance();
     String? refreshToken = prefs.getString('refresh_token');
@@ -274,7 +257,7 @@ class AuthService {
     }
   }
 
-  Future<Map<String, dynamic>> getUserProfile() async {
+  Future<Map<String, dynamic>> getUserProfile(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('auth_token');
 
@@ -287,7 +270,7 @@ class AuthService {
           'error': 'Session expirée, veuillez vous reconnecter.'
         };
       }
-      token = prefs.getString('auth_token'); // Récupérer le nouveau token
+      token = prefs.getString('auth_token');
     }
 
     try {
@@ -305,7 +288,7 @@ class AuthService {
         await prefs.setString('refresh_token', userData['refresh_token']);
         await prefs.setString('user_picture', userData['user_picture']);
         await prefs.setString('user_id', userData['id'].toString());
-
+        await prefs.setString('selected_price', userData['selected_price'] ?? 'details');
         await prefs.setString('phone', userData['phone']);
         await prefs.setString('email', userData['email'] ?? '');
         await prefs.setString('name', userData['name'] ?? '');
@@ -331,7 +314,9 @@ class AuthService {
             await prefs.remove('my_bakery');
             await prefs.remove('phone');
             await prefs.remove('user_picture');
+            await prefs.remove('selected_price');
           } else {
+            await expaildtokent(context);
             return {
               'success': false,
               'error': 'Session expirée, veuillez vous reconnecter.'
@@ -369,11 +354,26 @@ class AuthService {
     await prefs.remove('my_bakery');
     await prefs.remove('phone');
     await prefs.remove('user_picture');
+    await prefs.remove('selected_price');
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (context) => const LoginPage(),
       ),
     );
+  }
+
+  Future<void> _initializeServices() async {
+    print('📱 Initializing WebSocket for mobile platform');
+    await WebsocketService.connect();
+    await _requestForegroundServicePermission();
+  }
+
+  Future<void> _requestForegroundServicePermission() async {
+    if (Platform.isAndroid) {
+      final result = await Permission.locationWhenInUse.request();
+      print('🔍 Foreground location permission: $result');
+    }
   }
 }

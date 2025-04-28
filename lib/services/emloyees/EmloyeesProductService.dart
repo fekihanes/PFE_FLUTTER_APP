@@ -9,7 +9,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-class ProductService {
+class EmloyeesProductService {
   final String baseUrl = ApiConfig.baseUrl;
   final http.Client _client = http.Client();
 

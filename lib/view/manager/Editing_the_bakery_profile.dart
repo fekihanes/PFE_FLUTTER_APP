@@ -2,12 +2,13 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/Bakery.dart';
+import 'package:flutter_application/classes/ScrollingText.dart';
 import 'package:flutter_application/classes/traductions.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
 import 'package:flutter_application/custom_widgets/CustomTextField.dart';
 import 'package:flutter_application/custom_widgets/ImageInput.dart';
 import 'package:flutter_application/custom_widgets/NotificationIcon.dart';
-import 'package:flutter_application/services/manager/manager_service.dart';
+import 'package:flutter_application/services/Bakery/bakery_service.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,6 +32,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _deliveryFeeController = TextEditingController();
   String? _selectedDay;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -61,25 +63,27 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
           name: '',
           email: '',
           phone: '',
-          image: null, // Initialiser à null au lieu de chaîne vide
+          image: null,
           openingHours: '{}',
           managerId: _getCurrentManagerId(),
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
+          deliveryFee: 0,
         );
-        _imagePath = null; // Reset correct
+        _imagePath = null;
         _openingHours = {};
       });
       return;
     } else {
       try {
-        final fetchedBakery = await ManagerService().getBakery(context);
+        final fetchedBakery = await BakeryService().getBakery(context);
         if (fetchedBakery != null) {
           setState(() {
             bakery = fetchedBakery;
             _nameController.text = bakery!.name;
             _emailController.text = bakery!.email;
             _phoneController.text = bakery!.phone;
+            _deliveryFeeController.text = bakery!.deliveryFee.toString();
             _imagePath = bakery!.image;
             oldimage = bakery!.image;
             _openingHours = {};
@@ -104,6 +108,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
               managerId: _getCurrentManagerId(),
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),
+              deliveryFee: 0.0,
             );
             _imagePath = null;
             _webImage = null;
@@ -123,16 +128,13 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
   }
 
   int _getCurrentManagerId() {
-    // Implémentez la logique réelle ici (ex: SharedPreferences)
-    return 0; // Exemple
+    return 0;
   }
 
   void _setImage(String? imagePath, Uint8List? webImage) {
     setState(() {
       _imagePath = imagePath;
       _webImage = webImage;
-
-      // Forcer le rafraîchissement de l'état
       if (imagePath == null && webImage == null) {
         bakery = bakery?.copyWith(image: null);
       }
@@ -143,12 +145,12 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
     if (_selectedDay != null && !_openingHours.containsKey(_selectedDay)) {
       setState(() {
         _openingHours[_selectedDay!] = {
-          'start': '08:00', // Valeur par défaut
-          'end': '17:00', // Valeur par défaut
-          'deadline': '16:00' // Valeur par défaut
+          'start': '08:00',
+          'end': '17:00',
+          'deadline': '16:00'
         };
         _selectedDay = null;
-        FocusScope.of(context).unfocus(); // Fermer le clavier
+        FocusScope.of(context).unfocus();
       });
     }
   }
@@ -168,7 +170,6 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
       String end = dayData['end'];
       String deadline = dayData['deadline'];
 
-      // Ensure all fields are filled
       if (start.isEmpty || end.isEmpty || deadline.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -181,12 +182,10 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
         return false;
       }
 
-      // Parse times
       TimeOfDay startTime = _parseTimeOfDay(start);
       TimeOfDay endTime = _parseTimeOfDay(end);
       TimeOfDay deadlineTime = _parseTimeOfDay(deadline);
 
-      // Validate that end time is after start time
       if (endTime.hour < startTime.hour ||
           (endTime.hour == startTime.hour &&
               endTime.minute <= startTime.minute)) {
@@ -201,7 +200,6 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
         return false;
       }
 
-      // Validate that deadline is before end time
       if (deadlineTime.hour > endTime.hour ||
           (deadlineTime.hour == endTime.hour &&
               deadlineTime.minute >= endTime.minute)) {
@@ -231,17 +229,16 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
       TimeOfDay parsed = _parseTimeOfDay(time);
       return "${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}";
     } catch (e) {
-      return '00:00'; // default if parsing fails
+      return '00:00';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Corrected availableDays list with all weekdays
     List<String> availableDays = [
       'monday',
       'tuesday',
-      'wednesday', // Added missing Wednesday
+      'wednesday',
       'thursday',
       'friday',
       'saturday',
@@ -257,8 +254,8 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
               color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: Colors.white,
-        actions:  const [
-           NotificationIcon(),
+        actions: const [
+          NotificationIcon(),
         ],
       ),
       drawer: const CustomDrawerManager(),
@@ -283,6 +280,8 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
                     const SizedBox(height: 20),
                     _buildInputPhone(),
                     const SizedBox(height: 20),
+                    _buildInputdeliveryFee(),
+                    const SizedBox(height: 20),
                     _buildOpeningHours(availableDays),
                     const SizedBox(height: 20),
                     _buildContainerLocalization(bakery!),
@@ -299,8 +298,8 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
       child: ImageInputWidget(
         onImageSelected: _setImage,
         initialImage: bakery?.image,
-        width: MediaQuery.of(context).size.width * 0.8,
-        height: MediaQuery.of(context).size.height * 0.4,
+        width: 150,
+        height: 150,
       ),
     );
   }
@@ -349,8 +348,25 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
     );
   }
 
+  Widget _buildInputdeliveryFee() {
+    return _buildCustomTextField(
+      _deliveryFeeController,
+      AppLocalizations.of(context)!.delivery_fee,
+      Icons.local_shipping,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return AppLocalizations.of(context)!.delivery_fee_required;
+        }
+        final fee = double.tryParse(value);
+        if (fee == null || fee < 0) {
+          return AppLocalizations.of(context)!.delivery_fee_invalid;
+        }
+        return null;
+      },
+    );
+  }
+
   Widget _buildOpeningHours(List<String> availableDays) {
-    // Trier les entrées selon l'ordre des jours
     final sortedEntries = _openingHours.entries.toList()
       ..sort((a, b) => _orderedDays.indexOf(a.key.toLowerCase()).compareTo(
             _orderedDays.indexOf(b.key.toLowerCase()),
@@ -463,7 +479,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
         ],
       );
     } else {
-      return SizedBox.shrink(); // Évite un espace vide inutile
+      return SizedBox.shrink();
     }
   }
 
@@ -527,11 +543,14 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
       children: [
         DropdownButton<String>(
           value: _selectedDay,
-          hint: Text(AppLocalizations.of(context)!.select_day,
-              style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black)),
+          hint: Text(
+            AppLocalizations.of(context)!.select_day,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
           items: availableDays.map((day) {
             return DropdownMenuItem(
               value: day,
@@ -544,15 +563,30 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
             });
           },
         ),
-        const Spacer(),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFFB8C00)),
-          onPressed: _addNewOpeningDay,
-          child: Text(AppLocalizations.of(context)!.add_day,
-              style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFFFB8C00),
+              minimumSize: const Size(double.infinity, 40),
+            ),
+            onPressed: _addNewOpeningDay,
+            child: ScrollingWidgetList(
+              height: 20,
+              velocity: 40.0,
+              spacing: 16.0,
+              children: [
+                Text(
+                  AppLocalizations.of(context)!.add_day,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -624,15 +658,16 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
                       managerId: bakery!.managerId,
                       createdAt: bakery!.createdAt,
                       updatedAt: DateTime.now(),
+                      deliveryFee: double.parse(_deliveryFeeController.text),
                     );
 
                     try {
                       if (bakery!.id == -1) {
-                        await ManagerService()
+                        await BakeryService()
                             .createBakery(context, updatedBakery);
                         fetchData();
                       } else {
-                        await ManagerService()
+                        await BakeryService()
                             .updateBakery(context, updatedBakery, oldimage!);
                       }
                     } catch (e) {
@@ -660,7 +695,6 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            // Ajout d'Expanded pour éviter l'overflow
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFFFB8C00),
@@ -724,15 +758,16 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
                           managerId: bakery!.managerId,
                           createdAt: bakery!.createdAt,
                           updatedAt: DateTime.now(),
+                          deliveryFee: double.parse(_deliveryFeeController.text),
                         );
 
                         try {
                           if (bakery!.id == -1) {
-                            await ManagerService()
+                            await BakeryService()
                                 .createBakery(context, updatedBakery);
                             fetchData();
                           } else {
-                            await ManagerService().updateBakery(
+                            await BakeryService().updateBakery(
                                 context, updatedBakery, oldimage!);
                           }
                         } catch (e) {
@@ -755,9 +790,8 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
                     ),
             ),
           ),
-          SizedBox(width: 8), // Ajout d'un espace entre les boutons
+          SizedBox(width: 8),
           Expanded(
-            // Ajout d'Expanded ici aussi
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFFFB8C00),
@@ -770,7 +804,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
                       });
 
                       try {
-                        await ManagerService()
+                        await BakeryService()
                             .updateBakeryLocalization(context, bakery!.id);
                       } catch (e) {}
 
@@ -781,13 +815,15 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
                     },
               child: _isSaving
                   ? CircularProgressIndicator(color: Colors.white)
-                  : Text(
-                      AppLocalizations.of(context)!.save_new_localization,
-                      style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white),
-                    ),
+                  : ScrollingWidgetList(
+                    children:[ Text(
+                        AppLocalizations.of(context)!.save_new_localization,
+                        style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white),
+                      ),]
+                  ),
             ),
           ),
         ],
@@ -800,7 +836,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
       {String? Function(String?)? validator}) {
     return CustomTextField(
       controller: controller,
-      labelText: hintText, // Use hintText here
+      labelText: hintText,
       icon: icon,
       validator: validator,
     );

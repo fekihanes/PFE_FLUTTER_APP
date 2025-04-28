@@ -1,13 +1,17 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedPrimaryMaterialResponse.dart';
 import 'package:flutter_application/classes/PrimaryMaterial.dart';
+import 'package:flutter_application/classes/ScrollingText.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_employees.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
+import 'package:flutter_application/custom_widgets/UpdateStoke.dart';
+import 'package:flutter_application/services/Bakery/bakery_service.dart';
 import 'package:flutter_application/services/emloyees/primary_materials.dart';
-import 'package:flutter_application/services/manager/manager_service.dart';
 import 'package:flutter_application/view/manager/primary_material/AddPrimary_materialPage.dart';
 import 'package:flutter_application/view/manager/primary_material/UpdatePrimary_materialPage.dart';
+import 'package:flutter_application/view/manager/primary_material/return_de_stock.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -28,13 +32,14 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
   final TextEditingController _searchController = TextEditingController();
 
   Future<void> fetchPrimaryMaterial({int page = 1}) async {
-    if (!mounted) return; // Prevent unnecessary rebuilds if the widget is not mounted
+    if (!mounted) return;
     setState(() => isLoading = true);
 
     try {
       PaginatedPrimaryMaterialResponse? response =
           await EmployeesPrimaryMaterialService().searchPrimaryMaterial(
         context,
+        1,
         query: _searchController.text.trim(),
       );
 
@@ -69,7 +74,7 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final prefs = await SharedPreferences.getInstance();
       role = prefs.getString('role') ?? 'manager';
-      ManagerService().havebakery(context);
+      BakeryService().havebakery(context);
       fetchPrimaryMaterial();
     });
   }
@@ -91,9 +96,25 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
               color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.compare_arrows, color: Colors.black),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => return_de_stock(),
+                ),
+              );
+              fetchPrimaryMaterial();
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
-      drawer: role == 'manager' ? const CustomDrawerManager() : const CustomDrawerEmployees(),
-      
+      drawer: role == 'manager'
+          ? const CustomDrawerManager()
+          : const CustomDrawerEmployees(),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFFFB8C00),
         onPressed: () async {
@@ -103,7 +124,7 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
               builder: (context) => AddPrimary_materialPage(),
             ),
           );
-          fetchPrimaryMaterial(); // Refresh list after adding
+          fetchPrimaryMaterial();
         },
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -115,7 +136,7 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
             const SizedBox(height: 20),
             _buildInput(),
             const SizedBox(height: 20),
-            Expanded(child: _buildListprimaryMaterials()), // Single Expanded here
+            Expanded(child: _buildListprimaryMaterials()),
           ],
         ),
       ),
@@ -250,24 +271,35 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if(material.name.length > 9 && !kIsWeb)
+                ScrollingWidgetList(
+                  children:[ Text(
+                    material.name.toUpperCase(),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  ],
+                ),
+                if(material.name.length < 9 || kIsWeb)
                 Text(
-                  material.name,
+                  material.name.toUpperCase(),
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 20,
+                    fontSize: 14,
                   ),
                 ),
                 Text(
-                  DateFormat('yyyy-MM-dd')
-                      .format(material.updatedAt), // Formats date as YYYY-MM-DD
+                  DateFormat('yyyy-MM-dd').format(material.updatedAt),
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 10,
                     color: Colors.grey,
                   ),
                 ),
                 Text(
-                  DateFormat('HH:mm:ss')
-                      .format(material.updatedAt), // Formats time as HH:mm:ss
+                  DateFormat('HH:mm:ss').format(material.updatedAt),
                   style: const TextStyle(
                     fontSize: 12,
                     color: Colors.grey,
@@ -285,7 +317,14 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.update),
-                  onPressed: () => _showUpdateStokeConfirmationDialog(material),
+                  onPressed: () async {
+                    showUpdateStokeConfirmationDialog(
+                      material,
+                      context,
+                      onUpdate:
+                          fetchPrimaryMaterial, // Pass callback to refresh list
+                    );
+                  },
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete),
@@ -302,9 +341,8 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
 
   Widget _buildQuantityIndicator(PrimaryMaterial material) {
     final double reelQuantity = material.reelQuantity.toDouble();
-    final double maxQuantity = (material.maxQuantity > 0)
-        ? material.maxQuantity.toDouble()
-        : 1.0; // Prevent division by zero
+    final double maxQuantity =
+        (material.maxQuantity > 0) ? material.maxQuantity.toDouble() : 1.0;
 
     final double progressValue = (reelQuantity / maxQuantity).clamp(0.0, 1.0);
     Color mainColor;
@@ -328,9 +366,21 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if(material.unit =='kg') Text('${material.reelQuantity} ${AppLocalizations.of(context)!.kg}',style: const TextStyle(fontWeight: FontWeight.bold),),
-            if(material.unit =='litre') Text('${material.reelQuantity} ${AppLocalizations.of(context)!.litre}',style: const TextStyle(fontWeight: FontWeight.bold),),
-            if(material.unit == 'piece') Text('${material.reelQuantity} ${AppLocalizations.of(context)!.piece}',style: const TextStyle(fontWeight: FontWeight.bold),),
+            if (material.unit == 'kg')
+              Text(
+                '${material.reelQuantity} ${AppLocalizations.of(context)!.kg}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            if (material.unit == 'litre')
+              Text(
+                '${material.reelQuantity} ${AppLocalizations.of(context)!.litre}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            if (material.unit == 'piece')
+              Text(
+                '${material.reelQuantity} ${AppLocalizations.of(context)!.piece}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             const SizedBox(height: 5),
             SizedBox(
               width: 70,
@@ -360,158 +410,76 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
     fetchPrimaryMaterial();
   }
 
-  void _showDeleteConfirmationDialog(PrimaryMaterial material) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          AppLocalizations.of(context)!.confirmation,
-          style:
-              const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-        ),
-        content: Row(
-          children: [
-            Text(
-              '${AppLocalizations.of(context)!.deleteConfirmation}  ',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              material.name,
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold, color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // Ferme la boîte de dialogue
-            },
-            child: Text(
-              AppLocalizations.of(context)!.cancel,
-              style: const TextStyle(color: Colors.black),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-            ),
-            onPressed: () async {
-              await EmployeesPrimaryMaterialService()
-                  .deletePrimaryMaterial(material.id, context);
-              fetchPrimaryMaterial();
-              setState(() {
-                primaryMaterials.remove(material);
-              });
-              Navigator.of(context).pop(); // Ferme la boîte de dialogue
-            },
-            child: Text(
-              AppLocalizations.of(context)!.delete,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
+void _showDeleteConfirmationDialog(PrimaryMaterial material) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(
+        AppLocalizations.of(context)!.confirmation,
+        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+        textAlign: TextAlign.center,
       ),
-    );
-  }
-
-  void _showUpdateStokeConfirmationDialog(PrimaryMaterial material) {
-    TextEditingController _quantityController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          AppLocalizations.of(context)!.confirmation,
-          style:
-              const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              RichText(
-                text: TextSpan(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: '${AppLocalizations.of(context)!.deleteConfirmation} ',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                TextSpan(
+                  text: material.name,
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.black),
-                  children: [
-                    TextSpan(
-                        text:
-                            '${AppLocalizations.of(context)!.updateConfirmation} '),
-                    TextSpan(
-                      text: material.name,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _quantityController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  hintText: AppLocalizations.of(context)!.enterQuantity,
-                  prefixIcon: const Icon(Icons.numbers),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
                   ),
-                  filled: true,
-                  fillColor: Colors.white,
                 ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              AppLocalizations.of(context)!.cancel,
-              style: const TextStyle(color: Colors.black),
+              ],
             ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-            ),
-            onPressed: () async {
-              if (_quantityController.text.isNotEmpty &&
-                  int.tryParse(_quantityController.text) != null) {
-                int newQuantity = int.parse(_quantityController.text);
-
-                setState(() {
-                  material.reelQuantity += newQuantity;
-                });
-
-                await EmployeesPrimaryMaterialService().updateReelQuantityPrimaryMaterial(
-                    material.id, _quantityController.text, context);
-                Navigator.of(context).pop();
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content:
-                        Text(AppLocalizations.of(context)!.invalidQuantities)));
-              }
-            },
-            child: Text(
-              AppLocalizations.of(context)!.save,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+            textAlign: TextAlign.center,
+            softWrap: true,
           ),
         ],
       ),
-    );
-  }
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: Text(
+            AppLocalizations.of(context)!.cancel,
+            style: const TextStyle(color: Colors.black),
+          ),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+          ),
+          onPressed: () async {
+            await EmployeesPrimaryMaterialService()
+                .deletePrimaryMaterial(material.id, context);
+            fetchPrimaryMaterial();
+            setState(() {
+              primaryMaterials.remove(material);
+            });
+            Navigator.of(context).pop();
+          },
+          child: Text(
+            AppLocalizations.of(context)!.delete,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 }

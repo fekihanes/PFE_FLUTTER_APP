@@ -16,6 +16,12 @@ class RoleWidget extends StatelessWidget {
 
     // Logique pour le style des rôles
     switch (role) {
+      case 'special_customer':
+        roleColor =  Colors.teal;
+        backGroundRoleColor = Colors.teal[100]!;
+        roleIcon = const Icon(Icons.monetization_on,
+            color: Colors.teal, size: 20);
+        break;
       case 'caissier':
         roleColor = const Color(0xFFFB8C00);
         backGroundRoleColor = Colors.orange[100]!;

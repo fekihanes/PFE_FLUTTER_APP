@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedPrimaryMaterialResponse.dart';
+import 'package:flutter_application/classes/PrimaryMaterial.dart';
 import 'package:flutter_application/custom_widgets/customSnackbar.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -17,7 +18,8 @@ class EmployeesPrimaryMaterialService {
   final http.Client _client = http.Client();
 
   Future<PaginatedPrimaryMaterialResponse?> searchPrimaryMaterial(
-    BuildContext context, {
+    BuildContext context,
+    int enable, {
     String? query,
   }) async {
     try {
@@ -31,8 +33,10 @@ class EmployeesPrimaryMaterialService {
       }
 
       Map<String, String> queryParams = {};
+        queryParams['enable'] = enable.toString();
       if (query != null && query.isNotEmpty) {
         queryParams['query'] = query;
+
       }
 
       final uri = Uri.parse('${baseUrl}get_list_primary_material')
@@ -57,7 +61,7 @@ class EmployeesPrimaryMaterialService {
           if (message == 'Unauthenticated.') {
             bool refreshed = await AuthService().refreshToken();
             if (refreshed) {
-              return searchPrimaryMaterial(context, query: query);
+              return searchPrimaryMaterial(context, enable, query: query);
             } else {
               await AuthService().expaildtokent(context);
               return null;
@@ -68,7 +72,7 @@ class EmployeesPrimaryMaterialService {
         case 405:
           bool refreshed = await AuthService().refreshToken();
           if (refreshed) {
-            return searchPrimaryMaterial(context, query: query);
+            return searchPrimaryMaterial(context, enable, query: query);
           } else {
             await AuthService().expaildtokent(context);
             return null;
@@ -93,6 +97,7 @@ class EmployeesPrimaryMaterialService {
     String minQuantity,
     String maxQuantity,
     String image,
+    String cost,
     BuildContext context,
   ) async {
     try {
@@ -114,6 +119,8 @@ class EmployeesPrimaryMaterialService {
       request.fields['unit'] = unit;
       request.fields['min_quantity'] = minQuantity;
       request.fields['max_quantity'] = maxQuantity;
+      request.fields['cost'] = cost;
+
 
       if (image.isNotEmpty) {
         if (kIsWeb) {
@@ -157,7 +164,7 @@ class EmployeesPrimaryMaterialService {
             bool refreshed = await AuthService().refreshToken();
             if (refreshed) {
               return addPrimaryMaterial(
-                  name, unit, minQuantity, maxQuantity, image, context);
+                  name, unit, minQuantity, maxQuantity, image, cost, context);
             } else {
               await AuthService().expaildtokent(context);
             }
@@ -169,7 +176,7 @@ class EmployeesPrimaryMaterialService {
           bool refreshed = await AuthService().refreshToken();
           if (refreshed) {
             return addPrimaryMaterial(
-                name, unit, minQuantity, maxQuantity, image, context);
+                name, unit, minQuantity, maxQuantity, image, cost, context);
           } else {
             await AuthService().expaildtokent(context);
           }
@@ -190,6 +197,7 @@ class EmployeesPrimaryMaterialService {
     String unit,
     String minQuantity,
     String maxQuantity,
+    String cost,
     String image,
     String oldPicture,
     BuildContext context,
@@ -213,6 +221,7 @@ class EmployeesPrimaryMaterialService {
       request.fields['unit'] = unit;
       request.fields['min_quantity'] = minQuantity;
       request.fields['max_quantity'] = maxQuantity;
+      request.fields['cost'] = cost;
 
       if (oldPicture != image && image.isNotEmpty) {
         if (kIsWeb) {
@@ -252,7 +261,7 @@ class EmployeesPrimaryMaterialService {
             bool refreshed = await AuthService().refreshToken();
             if (refreshed) {
               return updatePrimaryMaterial(id, name, unit, minQuantity,
-                  maxQuantity, image, oldPicture, context);
+                  maxQuantity, cost, image, oldPicture, context);
             } else {
               await AuthService().expaildtokent(context);
             }
@@ -268,7 +277,7 @@ class EmployeesPrimaryMaterialService {
           bool refreshed = await AuthService().refreshToken();
           if (refreshed) {
             return updatePrimaryMaterial(id, name, unit, minQuantity,
-                maxQuantity, image, oldPicture, context);
+                maxQuantity, cost, image, oldPicture, context);
           } else {
             await AuthService().expaildtokent(context);
           }
@@ -283,11 +292,18 @@ class EmployeesPrimaryMaterialService {
     }
   }
 
-  Future<void> updateReelQuantityPrimaryMaterial(
+ Future<void> updateReelQuantityPrimaryMaterial(
     int id,
-    String reelQuantity,
-    BuildContext context,
-  ) async {
+    String reelQuantity, {
+    required String libelle,
+    String? factureImage,
+    Uint8List? webImage,
+    double? priceFacture,
+    required String type,
+    required String justification,
+    required String action,
+    required BuildContext context,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('auth_token');
@@ -297,22 +313,44 @@ class EmployeesPrimaryMaterialService {
             context, AppLocalizations.of(context)!.tokenNotFound);
         return;
       }
-      Map<String, String> queryParams = {};
-      if (reelQuantity.isNotEmpty) {
-        queryParams['reel_quantity'] = reelQuantity;
+
+      // Prepare the multipart request
+      final uri = Uri.parse('${baseUrl2}update_reel_quantity/$id');
+      var request = http.MultipartRequest('POST', uri);
+
+      // Add headers
+      request.headers['Authorization'] = 'Bearer $token';
+      request.headers['Accept'] = 'application/json';
+
+      // Add form fields
+      request.fields['reel_quantity'] = reelQuantity;
+      request.fields['libelle'] = libelle;
+      request.fields['type'] = type;
+      request.fields['justification'] = justification;
+      request.fields['action'] = action;
+      if (priceFacture != null) {
+        request.fields['price_facture'] = priceFacture.toString();
       }
 
-      final uri = Uri.parse('${baseUrl2}update_reel_quantity/$id')
-          .replace(queryParameters: queryParams);
+      // Add image file (if provided)
+      if (factureImage != null) {
+        // For mobile: use file path
+        request.files.add(await http.MultipartFile.fromPath(
+          'facture_image',
+          factureImage,
+        ));
+      } else if (webImage != null) {
+        // For web: use byte data
+        request.files.add(http.MultipartFile.fromBytes(
+          'facture_image',
+          webImage,
+          filename: 'facture_image.jpg',
+        ));
+      }
 
-      final response = await _client.post(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      );
+      // Send the request
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       switch (response.statusCode) {
         case 201:
@@ -332,7 +370,17 @@ class EmployeesPrimaryMaterialService {
             bool refreshed = await AuthService().refreshToken();
             if (refreshed) {
               return updateReelQuantityPrimaryMaterial(
-                  id, reelQuantity, context);
+                id,
+                reelQuantity,
+                libelle: libelle,
+                factureImage: factureImage,
+                webImage: webImage,
+                priceFacture: priceFacture,
+                type: type,
+                justification: justification,
+                action: action,
+                context: context,
+              );
             } else {
               await AuthService().expaildtokent(context);
             }
@@ -347,7 +395,18 @@ class EmployeesPrimaryMaterialService {
         case 405:
           bool refreshed = await AuthService().refreshToken();
           if (refreshed) {
-            return updateReelQuantityPrimaryMaterial(id, reelQuantity, context);
+            return updateReelQuantityPrimaryMaterial(
+              id,
+              reelQuantity,
+              libelle: libelle,
+              factureImage: factureImage,
+              webImage: webImage,
+              priceFacture: priceFacture,
+              type: type,
+              justification: justification,
+              action: action,
+              context: context,
+            );
           } else {
             await AuthService().expaildtokent(context);
           }
@@ -374,7 +433,7 @@ class EmployeesPrimaryMaterialService {
       }
 
       final uri = Uri.parse('${baseUrl2}delete_primary_materials/$id');
-      final response = await _client.delete(
+      final response = await _client.post(
         uri,
         headers: {
           'Authorization': 'Bearer $token',
@@ -423,4 +482,95 @@ class EmployeesPrimaryMaterialService {
           context, '${AppLocalizations.of(context)!.errorOccurred}: $e');
     }
   }
+  Future<PrimaryMaterial?> getPrimaryMaterialById(context, id) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('auth_token');
+
+      if (token == null) {
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.tokenNotFound);
+        return   null;
+
+      }
+
+      final uri = Uri.parse('${baseUrl}get_primary_material/$id');
+      final response = await _client.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return PrimaryMaterial.fromJson(jsonDecode(response.body));
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        final jsonResponse = jsonDecode(response.body);
+        String message = jsonResponse['message'] ?? 'Unauthenticated.';
+        if (message == 'Unauthenticated.') {
+          bool refreshed = await AuthService().refreshToken();
+          if (refreshed) {
+            return getPrimaryMaterialById(context, id);
+          } else {
+            await AuthService().expaildtokent(context);
+          }
+        } else {
+          Customsnackbar().showErrorSnackbar(context, message);
+        }
+      } else if (response.statusCode == 404) {
+        Customsnackbar().showErrorSnackbar(context, 'Not Found');
+      } else if (response.statusCode == 405) {
+        bool refreshed = await AuthService().refreshToken();
+        if (refreshed) {
+          return getPrimaryMaterialById(context, id);
+        } else {
+          await AuthService().expaildtokent(context); 
+      }
+      } else {
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.errorOccurred);
+      }
+    } catch (e) {
+      Customsnackbar().showErrorSnackbar(
+          context, '${AppLocalizations.of(context)!.errorOccurred}: $e');
+    }
+    return null;
+  }
+  Future<List<Map<String, dynamic>>> fetchMaterialsByIds(BuildContext context, List<int> ids) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) {
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.tokenNotFound ?? 'Token not found');
+        return [];
+      }
+
+      final response = await http.get(
+        Uri.parse('${baseUrl}get_list_primary_material_ids?ids=${ids.join(',')}'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      print('📤 Fetching materials: ${response.request?.url}');
+      print('📥 Response: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        return List<Map<String, dynamic>>.from(jsonResponse['data']);
+      }
+
+      final error = jsonDecode(response.body)['message'] ?? 'Failed to fetch materials';
+      Customsnackbar().showErrorSnackbar(context, error);
+      return [];
+    } catch (e) {
+      Customsnackbar().showErrorSnackbar(
+          context, AppLocalizations.of(context)!.networkError ?? 'Network error');
+      return [];
+    }
+  }
 }
+  

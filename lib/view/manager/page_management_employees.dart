@@ -3,7 +3,8 @@ import 'package:flutter_application/classes/traductions.dart';
 import 'package:flutter_application/classes/user_class.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
 import 'package:flutter_application/custom_widgets/RoleWidget.dart';
-import 'package:flutter_application/services/manager/manager_service.dart';
+import 'package:flutter_application/custom_widgets/user_role_dialog.dart';
+import 'package:flutter_application/services/Bakery/bakery_service.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedUserResponse.dart';
 import 'package:flutter_application/services/manager/managment_employees.dart';
 import 'package:flutter_application/view/manager/Add_Employee_page.dart';
@@ -27,13 +28,13 @@ class _HomePageManagerState extends State<HomePageManager> {
   String? nextPageUrl;
   final TextEditingController _searchController = TextEditingController();
 
-  // Cette méthode fetchUsers prend en charge la recherche avec les filtres
   Future<void> fetchUsers({int page = 1}) async {
     setState(() {
       isLoading = true;
     });
 
-    PaginatedUserResponse? response = await ManagementEmployeesService().searchemployees(
+    PaginatedUserResponse? response =
+        await ManagementEmployeesService().searchemployees(
       context,
       query: _searchController.text.trim(),
       page: page,
@@ -64,13 +65,11 @@ class _HomePageManagerState extends State<HomePageManager> {
     }
   }
 
-
-
   @override
   void initState() {
-    super.initState();    
+    super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ManagerService().havebakery(context);
+      BakeryService().havebakery(context);
     });
     fetchUsers();
   }
@@ -104,7 +103,7 @@ class _HomePageManagerState extends State<HomePageManager> {
             _buildInput(),
             const SizedBox(height: 20),
             _buildListEmployee(),
-            _buildPagination(), // Added pagination
+            _buildPagination(),
           ],
         ),
       ),
@@ -137,7 +136,6 @@ class _HomePageManagerState extends State<HomePageManager> {
             ),
           ),
           const Spacer(),
-          // Removed `const` here as total.toString() is a runtime operation
           Text(
             total.toString(),
             style: const TextStyle(
@@ -165,7 +163,7 @@ class _HomePageManagerState extends State<HomePageManager> {
         fillColor: Colors.white,
       ),
       onChanged: (value) {
-        fetchUsers(); // Re-fetch users on search input change
+        fetchUsers();
       },
     );
   }
@@ -195,6 +193,7 @@ class _HomePageManagerState extends State<HomePageManager> {
         ),
       );
     }
+
     return Expanded(
       child: ListView.builder(
         itemCount: users.length,
@@ -216,9 +215,37 @@ class _HomePageManagerState extends State<HomePageManager> {
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundImage: NetworkImage(user.userPicture ?? ''),
+                ClipOval(
+                  child: SizedBox(
+                    width: 60,
+                    height: 60,
+                    child: user.userPicture != null &&
+                            user.userPicture!.isNotEmpty
+                        ? Image.network(
+                            user.userPicture!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                              Icons.person,
+                              size: 60,
+                              color: Colors.grey,
+                            ),
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color(0xFFFB8C00)),
+                                ),
+                              );
+                            },
+                          )
+                        : const Icon(
+                            Icons.person,
+                            size: 60,
+                            color: Colors.grey,
+                          ),
+                  ),
                 ),
                 const SizedBox(width: 15),
                 Column(
@@ -231,306 +258,43 @@ class _HomePageManagerState extends State<HomePageManager> {
                         fontSize: 16,
                       ),
                     ),
+                    const SizedBox(height: 8),
                     RoleWidget(role: user.role),
+                    const SizedBox(height: 8),
+                    if (user.role == 'special_customer') ...[
+                      DropdownButton<String>(
+                        value: user.selected_price,
+                        onChanged: (String? newValue) {
+                          if (newValue != null) {
+                            setState(() {
+                              user.selected_price = newValue;
+                            });
+                            ManagementEmployeesService().update_selected_price(
+                                user.id, newValue, context);
+                          }
+                        },
+                        items: [
+                          DropdownMenuItem(
+                            value: 'gros',
+                            child:
+                                Text(AppLocalizations.of(context)!.price_gros),
+                          ),
+                          DropdownMenuItem(
+                            value: 'details',
+                            child: Text(
+                                AppLocalizations.of(context)!.price_details),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
                 const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.arrow_forward_ios, color: Colors.black),
+                  icon:
+                      const Icon(Icons.arrow_forward_ios, color: Colors.black),
                   onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        String selectedRole = user.role;
-                        return StatefulBuilder(
-                          builder: (context, setState) {
-                            return AlertDialog(
-                              title: Text(
-                                AppLocalizations.of(context)!.modifyRole,
-                                style: const TextStyle(
-                                  color: Color(0xFFFB8C00),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              content: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    AppLocalizations.of(context)!.userName,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                  Text(
-                                    user.name, // Accessing name directly
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
-                                  AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 500),
-                                    transitionBuilder: (Widget child,
-                                        Animation<double> animation) {
-                                      return ScaleTransition(
-                                          scale: animation, child: child);
-                                    },
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      key: ValueKey<String>(selectedRole),
-                                      children: [
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            setState(() {
-                                              selectedRole = 'patissier';
-                                            });
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                selectedRole == 'patissier'
-                                                    ? Colors.blueAccent
-                                                    : Colors.blue[100],
-                                            minimumSize:
-                                                const Size(double.infinity, 50),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12.0),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.cake,
-                                                color:
-                                                    selectedRole == 'patissier'
-                                                        ? Colors.white
-                                                        : Colors.blueAccent,
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Text(
-                                                Traductions().traductionrole(context, 'patissier'), // Use translation
-                                                style: TextStyle(
-                                                  color: selectedRole == 'patissier'
-                                                      ? Colors.white
-                                                      : Colors.blueAccent,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            setState(() {
-                                              selectedRole = 'boulanger';
-                                            });
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                selectedRole == 'boulanger'
-                                                    ? const Color(0xFF795548)
-                                                    : const Color(0xFF795548)
-                                                        .withOpacity(0.1),
-                                            minimumSize:
-                                                const Size(double.infinity, 50),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12.0),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(FontAwesomeIcons.breadSlice,
-                                                  color: selectedRole == 'boulanger'
-                                                      ? Colors.white
-                                                      : const Color(0xFF795548)),
-                                              const SizedBox(width: 10),
-                                              Text(
-                                                Traductions().traductionrole(context, 'boulanger'), // Use translation
-                                                style: TextStyle(
-                                                  color: selectedRole == 'boulanger'
-                                                      ? Colors.white
-                                                      : const Color(0xFF795548),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            setState(() {
-                                              selectedRole = 'caissier';
-                                            });
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                selectedRole == 'caissier'
-                                                    ? Colors.deepOrange
-                                                    : Colors.orange[100],
-                                            minimumSize:
-                                                const Size(double.infinity, 50),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12.0),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.monetization_on,
-                                                color:
-                                                    selectedRole == 'caissier'
-                                                        ? Colors.white
-                                                        : Colors.deepOrange,
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Text(
-                                                Traductions().traductionrole(context, 'caissier'), // Use translation
-                                                style: TextStyle(
-                                                  color: selectedRole == 'caissier'
-                                                      ? Colors.white
-                                                      : Colors.deepOrange,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            setState(() {
-                                              selectedRole = 'livreur';
-                                            });
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                selectedRole == 'livreur'
-                                                    ? Colors.purple
-                                                    : Colors.purple[100],
-                                            minimumSize:
-                                                const Size(double.infinity, 50),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12.0),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.local_shipping,
-                                                color: selectedRole == 'livreur'
-                                                    ? Colors.white
-                                                    : Colors.purple,
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Text(
-                                                Traductions().traductionrole(context, 'livreur'), // Use translation
-                                                style: TextStyle(
-                                                  color: selectedRole == 'livreur'
-                                                      ? Colors.white
-                                                      : Colors.purple,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            setState(() {
-                                              selectedRole = 'user';
-                                            });
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                selectedRole == 'user'
-                                                    ? Colors.green
-                                                    : Colors.green[100],
-                                            minimumSize:
-                                                const Size(double.infinity, 50),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12.0),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.person,
-                                                color: selectedRole == 'user'
-                                                    ? Colors.white
-                                                    : Colors.green,
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Text(
-                                                Traductions().traductionrole(context, 'user'), // Use translation
-                                                style: TextStyle(
-                                                  color: selectedRole == 'user'
-                                                      ? Colors.white
-                                                      : Colors.green,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                  child: Text(
-                                    AppLocalizations.of(context)!.cancel,
-                                    style: const TextStyle(color: Colors.black),
-                                  ),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () async {
-                                    await ManagementEmployeesService().updateUserRole(
-                                        user.id, selectedRole, context);
-                                    fetchUsers(page: currentPage);
-                                    setState(() {
-                                      user.role =
-                                          selectedRole; // Directly updating role
-                                    });
-                                    fetchUsers(page: currentPage);
-                                    Navigator.of(context).pop();
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFFB8C00),
-                                    minimumSize: const Size(100, 50),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    AppLocalizations.of(context)!.save,
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                    );
+                    showUserRoleDialog(context, user, fetchUsers, currentPage);
                   },
                 ),
               ],
@@ -544,10 +308,9 @@ class _HomePageManagerState extends State<HomePageManager> {
   Widget _buildPagination() {
     List<Widget> pageLinks = [];
 
-    // Couleur pour la flèche quand elle est cliquable
     Color arrowColor = const Color(0xFFFB8C00);
-    Color disabledArrowColor = arrowColor.withOpacity(0.1); // 10% plus clair
-    pageLinks.add(const Spacer()); // Affichage de la flèche "Précédent"
+    Color disabledArrowColor = arrowColor.withOpacity(0.1);
+    pageLinks.add(const Spacer());
     pageLinks.add(
       Container(
         padding: const EdgeInsets.all(8.0),
@@ -562,11 +325,9 @@ class _HomePageManagerState extends State<HomePageManager> {
                   setState(() {
                     currentPage--;
                   });
-                  fetchUsers(
-                      page:
-                          currentPage); // Charge les utilisateurs pour la page précédente
+                  fetchUsers(page: currentPage);
                 }
-              : null, // Si prevPageUrl est null, on ne permet pas l'action
+              : null,
           child: const Icon(
             Icons.arrow_left,
             color: Colors.black,
@@ -575,9 +336,7 @@ class _HomePageManagerState extends State<HomePageManager> {
       ),
     );
 
-    // Affichage des numéros de page
     for (int i = 1; i <= lastPage; i++) {
-      // Check if i is within the range of currentPage - 3 to currentPage + 3
       if (i >= (currentPage - 3).clamp(1, lastPage) &&
           i <= (currentPage + 3).clamp(1, lastPage)) {
         pageLinks.add(
@@ -586,9 +345,7 @@ class _HomePageManagerState extends State<HomePageManager> {
               setState(() {
                 currentPage = i;
               });
-              fetchUsers(
-                  page:
-                      currentPage); // Charge les utilisateurs pour la page correspondante
+              fetchUsers(page: currentPage);
             },
             child: Container(
               padding: const EdgeInsets.all(8.0),
@@ -610,7 +367,6 @@ class _HomePageManagerState extends State<HomePageManager> {
       }
     }
 
-    // Affichage de la flèche "Suivant"
     pageLinks.add(
       Container(
         padding: const EdgeInsets.all(8.0),
@@ -625,11 +381,9 @@ class _HomePageManagerState extends State<HomePageManager> {
                   setState(() {
                     currentPage++;
                   });
-                  fetchUsers(
-                      page:
-                          currentPage); // Charge les utilisateurs pour la page suivante
+                  fetchUsers(page: currentPage);
                 }
-              : null, // Si nextPageUrl est null, on ne permet pas l'action
+              : null,
           child: const Icon(
             Icons.arrow_right,
             color: Colors.black,
@@ -640,18 +394,17 @@ class _HomePageManagerState extends State<HomePageManager> {
     pageLinks.add(const Spacer());
     pageLinks.add(IconButton(
       icon: Container(
-        width: 50, // Set the width of the container
-        height: 50, // Set the height of the container
+        width: 50,
+        height: 50,
         decoration: BoxDecoration(
-          color: const Color(0xFFFB8C00), // Background color
-          borderRadius: BorderRadius.circular(8), // Rounded border
+          color: const Color(0xFFFB8C00),
+          borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: Colors.black
-                  .withOpacity(0.5), // Shadow color (adjust opacity)
-              spreadRadius: 2, // Spread of the shadow
-              blurRadius: 5, // Blur radius
-              offset: const Offset(0, 3), // Shadow position
+              color: Colors.black.withOpacity(0.5),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -673,8 +426,7 @@ class _HomePageManagerState extends State<HomePageManager> {
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children:
-                  pageLinks, // Utilisation correcte de la liste de widgets
+              children: pageLinks,
             ),
           ),
         ],
