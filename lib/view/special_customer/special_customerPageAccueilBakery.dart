@@ -412,7 +412,7 @@ class _special_customerPageAccueilBakeryState
                     fontWeight: FontWeight.bold),
               ),
               Text(
-                "${totalPrice.toStringAsFixed(2)} ${AppLocalizations.of(context)!.dt}",
+                "${totalPrice.toStringAsFixed(3)} ${AppLocalizations.of(context)!.dt}",
                 style: TextStyle(
                     fontSize: constraints.maxWidth < 600 ? 18 : 22,
                     color: Color(0xFFFB8C00),
@@ -556,7 +556,7 @@ class _special_customerPageAccueilBakeryState
           ),
           SizedBox(width: 10),
           Text(
-                            (selected_price == 'gros' ? "${(product.wholesalePrice* quantity).toStringAsFixed(2)} ${AppLocalizations.of(context)!.dt}" : "${(product.price* quantity).toStringAsFixed(2)} ${AppLocalizations.of(context)!.dt}"),
+                            (selected_price == 'gros' ? "${(product.wholesalePrice* quantity).toStringAsFixed(3)} ${AppLocalizations.of(context)!.dt}" : "${(product.price* quantity).toStringAsFixed(3)} ${AppLocalizations.of(context)!.dt}"),
 
             style: TextStyle(
                 fontSize: constraints.maxWidth < 600 ? 16 : 18,

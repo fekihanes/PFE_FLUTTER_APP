@@ -32,6 +32,8 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
   String? nextPageUrl;
   late TextEditingController _searchController;
   String type = "all";
+  late bool isWebLayout;
+  Map<Product, TextEditingController> _quantityControllers = {};
 
   @override
   void initState() {
@@ -52,19 +54,16 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
     }
   }
 
-    Future<void> fetchproducts({int page = 1}) async {
-      setState(() => isLoading = true);
-      final response = await BakeriesService().searchProducts(
-        context,
-        page: page,
-        myBakery: widget.bakery.id.toString(),
-        type: type,
-        enable: 1,
-        query: null
-// query: _searchController.text.trim().isNotEmpty 
-//           ? _searchController.text.trim() 
-//           : null,
-      );
+  Future<void> fetchproducts({int page = 1}) async {
+    setState(() => isLoading = true);
+    final response = await BakeriesService().searchProducts(
+      context,
+      page: page,
+      myBakery: widget.bakery.id.toString(),
+      type: type,
+      enable: 1,
+      query: null,
+    );
     setState(() {
       isLoading = false;
       if (response != null) {
@@ -88,6 +87,7 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
   @override
   void dispose() {
     _searchController.dispose();
+    _quantityControllers.forEach((_, controller) => controller.dispose());
     super.dispose();
   }
 
@@ -115,154 +115,329 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
     }
 
     int crossAxisCount;
-    double childAspectRatio;
-
-    // Déterminer le crossAxisCount en fonction de la largeur de l'écran
     if (constraints.maxWidth < 600) {
-      crossAxisCount = 1; // Téléphone
-      childAspectRatio =
-          (constraints.maxWidth / 1) / (constraints.maxHeight * 0.4);
+      crossAxisCount = 1;
     } else if (constraints.maxWidth < 900) {
-      crossAxisCount = 3; // Tablette
-      childAspectRatio =
-          (constraints.maxWidth / 2) / (constraints.maxHeight * 0.63);
+      crossAxisCount = 2;
     } else if (constraints.maxWidth < 1200) {
-      crossAxisCount = 4; // Web
-      childAspectRatio =
-          (constraints.maxWidth / 3) / (constraints.maxHeight * 0.55);
+      crossAxisCount = 3;
     } else {
-      crossAxisCount = 5; // TV
-      childAspectRatio =
-          (constraints.maxWidth / 4) / (constraints.maxHeight * 0.55);
+      crossAxisCount = 4;
     }
 
-    // S'assurer que le childAspectRatio reste dans des limites raisonnables
-    childAspectRatio = childAspectRatio.clamp(0.5, 1.5);
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: constraints.maxWidth * 0.02,
-        mainAxisSpacing: constraints.maxHeight * 0.015,
-        childAspectRatio:
-            childAspectRatio, // Utiliser la valeur calculée dynamiquement
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: constraints.maxWidth * 0.02,
+          mainAxisSpacing: constraints.maxHeight * 0.015,
+        ),
+        itemCount: products.length,
+        itemBuilder: (context, index) {
+          return Card(
+            elevation: 6,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Container(
+              padding: EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(10),
+                color: Colors.white,
+              ),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    widget.products_selected.update(products[index], (value) => value + 1,
+                        ifAbsent: () => 1);
+                    if (!_quantityControllers.containsKey(products[index])) {
+                      _quantityControllers[products[index]] = TextEditingController(
+                          text: widget.products_selected[products[index]].toString());
+                    }
+                  });
+                },
+                child: _ShowinfoProduct(products[index], constraints),
+              ),
+            ),
+          );
+        },
       ),
-      itemCount: products.length,
-      itemBuilder: (context, index) {
-        return Container(
-          padding: EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            borderRadius: BorderRadius.circular(10),
-            color: Colors.white,
-          ),
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                widget.products_selected.update(products[index], (value) => value + 1,
-                    ifAbsent: () => 1);
-              });
-            },
-            child: _ShowinfoProduct(products[index], constraints),
-          ),
-        );
-      },
     );
   }
 
   Widget _ShowinfoProduct(Product product, BoxConstraints constraints) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        CachedNetworkImage(
-          imageUrl: ApiConfig.changePathImage(product.picture),
-          width: double.infinity,
-          height: constraints.maxHeight * 0.2, // Reduced image height
-          fit: BoxFit.cover,
-          progressIndicatorBuilder: (context, url, progress) => Center(
-            child: CircularProgressIndicator(
-              value: progress.progress,
-              color: const Color(0xFFFB8C00),
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: constraints.maxHeight * 0.4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: CachedNetworkImage(
+              imageUrl: ApiConfig.changePathImage(product.picture),
+              width: double.infinity,
+              fit: BoxFit.cover,
+              progressIndicatorBuilder: (context, url, progress) => Center(
+                child: CircularProgressIndicator(
+                  value: progress.progress,
+                  color: const Color(0xFFFB8C00),
+                ),
+              ),
+              errorWidget: (context, url, error) => Container(
+                color: Colors.grey[200],
+                child: const Icon(Icons.store, size: 40),
+              ),
+              imageBuilder: (context, imageProvider) => ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image(image: imageProvider, fit: BoxFit.cover),
+              ),
             ),
           ),
-          errorWidget: (context, url, error) => Container(
-            color: Colors.grey[200],
-            child: const Icon(Icons.store, size: 40), // Smaller icon
-          ),
-          imageBuilder: (context, imageProvider) => ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image(image: imageProvider, fit: BoxFit.cover),
-          ),
-        ),
-        SizedBox(height: constraints.maxHeight * 0.01),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 0, 0),
-          child: Text(
-            product.name.toUpperCase(),
-            style: TextStyle(
-              fontSize: constraints.maxWidth < 600 ? 16 : 20, // Smaller font
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+          SizedBox(height: constraints.maxHeight * 0.01),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 0, 0),
+            child: Text(
+              product.name.toUpperCase(),
+              style: TextStyle(
+                fontSize: constraints.maxWidth < 600 ? 16 : 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 0, 0),
-          child: Row(
-            children: [
-              Text(
-                "${product.price} ${AppLocalizations.of(context)!.dt}",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize:
-                      constraints.maxWidth < 600 ? 16 : 20, // Smaller font
-                  color: Color(0xFFFB8C00),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 0, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "${product.price}",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: constraints.maxWidth < 600 ? 16 : 20,
+                          color: Color(0xFFFB8C00),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                      Text(
+                        AppLocalizations.of(context)!.dt,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: constraints.maxWidth < 600 ? 16 : 20,
+                          color: Color(0xFFFB8C00),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ],
+                  ),
                 ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 2,
-              ),
-              const Spacer(),
-              Text(
-                product.reelQuantity.toString(),
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize:
-                      constraints.maxWidth < 600 ? 16 : 20, // Smaller font
-                  color: Colors.black,
+                const Spacer(),
+                Text(
+                  product.reelQuantity.toString(),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: constraints.maxWidth < 600 ? 16 : 20,
+                    color: Colors.black,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 2,
-              ),
-            ],
+              ],
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildFromMobile(BuildContext context, BoxConstraints constraints) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-      ],
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              margin: EdgeInsets.all(constraints.maxWidth * 0.04),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: const LinearGradient(
+                    colors: [Colors.white, Color(0xFFFFF3E0)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: _buildContproducts(),
+              ),
+            ),
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              margin: EdgeInsets.symmetric(horizontal: constraints.maxWidth * 0.04),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                ),
+                child: _buildFormSearch(),
+              ),
+            ),
+            SizedBox(height: constraints.maxHeight * 0.02),
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              margin: EdgeInsets.all(constraints.maxWidth * 0.04),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                ),
+                child: _buildProductList(constraints),
+              ),
+            ),
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              margin: EdgeInsets.all(constraints.maxWidth * 0.04),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                ),
+                child: _buildcart(constraints),
+              ),
+            ),
+            Center(child: _buildPagination()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildFromWeb(BuildContext context, BoxConstraints constraints) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    margin: EdgeInsets.all(constraints.maxWidth * 0.02),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: const LinearGradient(
+                          colors: [Colors.white, Color(0xFFFFF3E0)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: _buildContproducts(),
+                    ),
+                  ),
+                  Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    margin: EdgeInsets.symmetric(horizontal: constraints.maxWidth * 0.02),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.white,
+                      ),
+                      child: _buildFormSearch(),
+                    ),
+                  ),
+                              SizedBox(height: constraints.maxHeight * 0.02),
+
+                  Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    margin: EdgeInsets.symmetric(horizontal: constraints.maxWidth * 0.02),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.white,
+                      ),
+                      child: _buildProductList(constraints),
+                    ),
+                  ),
+                  Center(child: _buildPagination()),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: SingleChildScrollView(
+              child: Card(
+                elevation: 6,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                margin: EdgeInsets.all(constraints.maxWidth * 0.02),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white,
+                  ),
+                  child: _buildcart(constraints),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    isWebLayout = MediaQuery.of(context).size.width >= 600;
     return Scaffold(
       appBar: AppBar(
         title: Text(
           widget.bakery.name.toUpperCase(),
           style: const TextStyle(
-              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
+              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const PageFindBahery()
+              builder: (context) => const PageFindBahery(),
             ),
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFB8C00),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: isBigLoading
           ? Center(
@@ -277,30 +452,9 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
             )
           : LayoutBuilder(
               builder: (context, constraints) {
-                return Container(
-                  color: const Color(0xFFE5E7EB),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: SingleChildScrollView(
-                          padding: EdgeInsets.all(32),
-                          child: Column(
-                            children: [
-                              _buildContproducts(),
-                              SizedBox(height: constraints.maxHeight * 0.015),
-                              _buildFormSearch(),
-                              SizedBox(height: constraints.maxHeight * 0.015),
-                              _buildProductList(constraints),
-                              SizedBox(height: constraints.maxHeight * 0.015),
-                              _buildcart(constraints),
-                            ],
-                          ),
-                        ),
-                      ),
-                      _buildPagination(),
-                    ],
-                  ),
-                );
+                return isWebLayout
+                    ? buildFromWeb(context, constraints)
+                    : buildFromMobile(context, constraints);
               },
             ),
     );
@@ -308,31 +462,20 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
 
   Widget _buildcart(BoxConstraints constraints) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: SingleChildScrollView(
-        padding: EdgeInsets.all(32),
-        child: Column(children: [
+      padding: EdgeInsets.all(32),
+      child: Column(
+        children: [
           Text(
             AppLocalizations.of(context)!.order_in_progress,
             style: TextStyle(
-              fontSize: constraints.maxWidth < 600 ? 16 : 20, // Smaller font
+              fontSize: constraints.maxWidth < 600 ? 16 : 20,
               fontWeight: FontWeight.bold,
               color: Colors.black,
             ),
           ),
           SizedBox(height: constraints.maxHeight * 0.015),
           _buildContcart(constraints),
-        ]),
+        ],
       ),
     );
   }
@@ -361,35 +504,44 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
           itemCount: widget.products_selected.length,
           itemBuilder: (context, index) {
             final entry = widget.products_selected.entries.elementAt(index);
-            return _buildCartItem(entry.key, entry.value, constraints);
+            return Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: EdgeInsets.symmetric(vertical: constraints.maxWidth * 0.01),
+              child: _buildCartItem(entry.key, entry.value, constraints),
+            );
           },
         ),
         SizedBox(height: constraints.maxHeight * 0.015),
         Divider(height: 20),
         SizedBox(height: constraints.maxHeight * 0.015),
-        Container(
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                AppLocalizations.of(context)!.total,
-                style: TextStyle(
-                    fontSize: constraints.maxWidth < 600 ? 18 : 22,
-                    fontWeight: FontWeight.bold),
-              ),
-              Text(
-                "${totalPrice.toStringAsFixed(2)} ${AppLocalizations.of(context)!.dt}",
-                style: TextStyle(
-                    fontSize: constraints.maxWidth < 600 ? 18 : 22,
-                    color: Color(0xFFFB8C00),
-                    fontWeight: FontWeight.bold),
-              )
-            ],
+        Card(
+          elevation: 3,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              color: Colors.white,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  AppLocalizations.of(context)!.total,
+                  style: TextStyle(
+                      fontSize: constraints.maxWidth < 600 ? 18 : 22,
+                      fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "${totalPrice.toStringAsFixed(3)} ${AppLocalizations.of(context)!.dt}",
+                  style: TextStyle(
+                      fontSize: constraints.maxWidth < 600 ? 18 : 22,
+                      color: Color(0xFFFB8C00),
+                      fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
           ),
         ),
         SizedBox(height: constraints.maxHeight * 0.02),
@@ -410,27 +562,32 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
     );
   }
 
-  _buildButtonClear(BoxConstraints constraints) {
+  Widget _buildButtonClear(BoxConstraints constraints) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.red,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       ),
       child: Text(
         AppLocalizations.of(context)!.cancel,
         style: TextStyle(
-          fontSize: constraints.maxWidth < 600 ? 16 : 20,
+          fontSize: constraints.maxWidth < 600 ? 14 : 16,
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
+        textAlign: TextAlign.center,
       ),
-      onPressed: () => setState(() => widget.products_selected.clear()),
+      onPressed: () => setState(() {
+        widget.products_selected.clear();
+        _quantityControllers.clear();
+      }),
     );
   }
 
-  _buildButtonCheckout(BoxConstraints constraints) {
+  Widget _buildButtonCheckout(BoxConstraints constraints) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: Color(0xFFFB8C00),
@@ -460,14 +617,15 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
     );
   }
 
-
-
   void _updateQuantity(Product product, int newQuantity) {
     setState(() {
       if (newQuantity > 0) {
         widget.products_selected[product] = newQuantity;
+        _quantityControllers[product]?.text = newQuantity.toString();
       } else {
         widget.products_selected.remove(product);
+        _quantityControllers[product]?.dispose();
+        _quantityControllers.remove(product);
       }
     });
   }
@@ -475,6 +633,8 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
   void _removeProduct(Product product) {
     setState(() {
       widget.products_selected.remove(product);
+      _quantityControllers[product]?.dispose();
+      _quantityControllers.remove(product);
     });
   }
 
@@ -563,59 +723,46 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
 
   Widget _buildFormSearch() {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10.0),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              spreadRadius: 2,
-              blurRadius: 5,
-              offset: const Offset(0, 3))
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _searchController,
-              onChanged: (value) => fetchproducts(),
-              decoration: InputDecoration(
-                labelText: AppLocalizations.of(context)!.searchByName,
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10.0)),
-              ),
+      padding: const EdgeInsets.all(12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _searchController,
+            onChanged: (value) => fetchproducts(),
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context)!.searchByName,
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0)),
             ),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              value: type,
-              onChanged: (value) {
-                setState(() => type = value!);
-                fetchproducts();
-              },
-              items: [
-                DropdownMenuItem(
-                    value: "all",
-                    child: Text(AppLocalizations.of(context)!.all)),
-                DropdownMenuItem(
-                    value: "Salty",
-                    child: Text(AppLocalizations.of(context)!.salty)),
-                DropdownMenuItem(
-                    value: "Sweet",
-                    child: Text(AppLocalizations.of(context)!.sweet))
-              ],
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.grey[400],
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30.0)),
-              ),
-            )
-          ],
-        ),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: type,
+            onChanged: (value) {
+              setState(() => type = value!);
+              fetchproducts();
+            },
+            items: [
+              DropdownMenuItem(
+                  value: "all",
+                  child: Text(AppLocalizations.of(context)!.all)),
+              DropdownMenuItem(
+                  value: "Salty",
+                  child: Text(AppLocalizations.of(context)!.salty)),
+              DropdownMenuItem(
+                  value: "Sweet",
+                  child: Text(AppLocalizations.of(context)!.sweet))
+            ],
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.grey[400],
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30.0)),
+            ),
+          )
+        ],
       ),
     );
   }
@@ -623,16 +770,6 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
   Widget _buildContproducts() {
     return Container(
       padding: const EdgeInsets.all(32.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.grey.withOpacity(0.3),
-              spreadRadius: 2,
-              blurRadius: 5)
-        ],
-      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -656,85 +793,98 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
     );
   }
 
-    Widget _buildCartItem(
-      Product product, int quantity, BoxConstraints constraints) {
+  Widget _buildCartItem(Product product, int quantity, BoxConstraints constraints) {
+    if (!_quantityControllers.containsKey(product)) {
+      _quantityControllers[product] = TextEditingController(text: quantity.toString());
+    }
+
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-      ),
       child: Row(
         children: [
           const SizedBox(width: 10),
-          Column(
-            children: [
-              Text(
-                product.name,
-                style: TextStyle(
-                  fontSize: constraints.maxWidth < 600 ? 12 : 16,
-                  fontWeight: FontWeight.bold,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.name,
+                  style: TextStyle(
+                    fontSize: constraints.maxWidth < 600 ? 12 : 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-              const SizedBox(height: 5),
-              Row(
-                children: [
-                  Container(
-                    height: constraints.maxWidth < 600 ? 25 : 40,
-                    width: constraints.maxWidth < 600 ? 25 : 40,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFB8C00),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: IconButton(
-                        icon: Icon(Icons.remove,
-                            size: constraints.maxWidth < 600 ? 20 : 24),
-                        onPressed: () => _updateQuantity(product, quantity - 1),
-                        color: Colors.white,
-                        padding: EdgeInsets.zero,
+                const SizedBox(height: 5),
+                Row(
+                  children: [
+                    Container(
+                      height: constraints.maxWidth < 600 ? 25 : 40,
+                      width: constraints.maxWidth < 600 ? 25 : 40,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFB8C00),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: IconButton(
+                          icon: Icon(Icons.remove,
+                              size: constraints.maxWidth < 600 ? 20 : 24),
+                          onPressed: () => _updateQuantity(product, quantity - 1),
+                          color: Colors.white,
+                          padding: EdgeInsets.zero,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 3),
-                  SizedBox(
-                    width: 30,
-                    child: Text(
-                      "$quantity",
-                      style: TextStyle(
-                        fontSize: constraints.maxWidth < 600 ? 18 : 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(width: 3),
-                  Container(
-                    height: constraints.maxWidth < 600 ? 25 : 40,
-                    width: constraints.maxWidth < 600 ? 25 : 40,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFB8C00),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: IconButton(
-                        icon: Icon(Icons.add,
-                            size: constraints.maxWidth < 600 ? 20 : 24),
-                        onPressed: () => _updateQuantity(product, quantity + 1),
-                        color: Colors.white,
-                        padding: EdgeInsets.zero,
+                    const SizedBox(width: 3),
+                    SizedBox(
+                      width: 50,
+                      child: TextField(
+                        controller: _quantityControllers[product],
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        onChanged: (value) {
+                          int? newQty = int.tryParse(value);
+                          if (newQty != null && newQty >= 0) {
+                            _updateQuantity(product, newQty);
+                          } else {
+                            _quantityControllers[product]?.text = quantity.toString();
+                          }
+                        },
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 3),
+                    Container(
+                      height: constraints.maxWidth < 600 ? 25 : 40,
+                      width: constraints.maxWidth < 600 ? 25 : 40,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFB8C00),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: IconButton(
+                          icon: Icon(Icons.add,
+                              size: constraints.maxWidth < 600 ? 20 : 24),
+                          onPressed: () => _updateQuantity(product, quantity + 1),
+                          color: Colors.white,
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
           const SizedBox(width: 10),
           Text(
-            "${(product.price * quantity).toStringAsFixed(2)} ${AppLocalizations.of(context)!.dt}",
+            "${(product.price * quantity).toStringAsFixed(3)} ${AppLocalizations.of(context)!.dt}",
             style: TextStyle(
               fontSize: constraints.maxWidth < 600 ? 16 : 18,
               color: Colors.grey[600],
@@ -749,6 +899,4 @@ class _PageAccueilBakeryState extends State<PageAccueilBakery> {
       ),
     );
   }
-
- 
 }

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/Bakery.dart';
-import 'package:flutter_application/classes/ScrollingText.dart';
 import 'package:flutter_application/classes/traductions.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
 import 'package:flutter_application/custom_widgets/CustomTextField.dart';
@@ -49,14 +48,17 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
   @override
   void initState() {
     super.initState();
+    print('initState: Initializing EditingTheBakeryProfile');
     fetchData();
   }
 
   Future<void> fetchData() async {
+    print('fetchData: Fetching bakery data');
     final prefs = await SharedPreferences.getInstance();
     String? idBakery = prefs.getString('my_bakery');
 
     if (idBakery == null || idBakery.isEmpty) {
+      print('fetchData: No bakery ID found, setting default bakery');
       setState(() {
         bakery = Bakery(
           id: -1,
@@ -78,6 +80,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
       try {
         final fetchedBakery = await BakeryService().getBakery(context);
         if (fetchedBakery != null) {
+          print('fetchData: Bakery fetched successfully, ID: ${fetchedBakery.id}');
           setState(() {
             bakery = fetchedBakery;
             _nameController.text = bakery!.name;
@@ -97,6 +100,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
             });
           });
         } else {
+          print('fetchData: No bakery data returned, setting default');
           setState(() {
             bakery = Bakery(
               id: -1,
@@ -115,7 +119,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
           });
         }
       } catch (e, stacktrace) {
-        print('Error fetching bakery data: $e');
+        print('fetchData: Error fetching bakery data: $e');
         print(stacktrace);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -128,10 +132,12 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
   }
 
   int _getCurrentManagerId() {
+    print('_getCurrentManagerId: Returning default manager ID: 0');
     return 0;
   }
 
   void _setImage(String? imagePath, Uint8List? webImage) {
+    print('_setImage: Setting image, path: $imagePath, webImage: ${webImage != null ? "present" : "null"}');
     setState(() {
       _imagePath = imagePath;
       _webImage = webImage;
@@ -143,6 +149,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
 
   void _addNewOpeningDay() {
     if (_selectedDay != null && !_openingHours.containsKey(_selectedDay)) {
+      print('_addNewOpeningDay: Adding new opening day: $_selectedDay');
       setState(() {
         _openingHours[_selectedDay!] = {
           'start': '08:00',
@@ -156,12 +163,14 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
   }
 
   void _removeOpeningDay(String day) {
+    print('_removeOpeningDay: Removing opening day: $day');
     setState(() {
       _openingHours.remove(day);
     });
   }
 
   bool _validateOpeningHours() {
+    print('_validateOpeningHours: Validating opening hours');
     for (var entry in _openingHours.entries) {
       String day = entry.key;
       Map<String, dynamic> dayData = entry.value;
@@ -171,6 +180,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
       String deadline = dayData['deadline'];
 
       if (start.isEmpty || end.isEmpty || deadline.isEmpty) {
+        print('_validateOpeningHours: Empty fields for $day');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -189,6 +199,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
       if (endTime.hour < startTime.hour ||
           (endTime.hour == startTime.hour &&
               endTime.minute <= startTime.minute)) {
+        print('_validateOpeningHours: End time before start for $day');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -203,6 +214,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
       if (deadlineTime.hour > endTime.hour ||
           (deadlineTime.hour == endTime.hour &&
               deadlineTime.minute >= endTime.minute)) {
+        print('_validateOpeningHours: Deadline after end for $day');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -214,6 +226,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
         return false;
       }
     }
+    print('_validateOpeningHours: Validation passed');
     return true;
   }
 
@@ -229,12 +242,298 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
       TimeOfDay parsed = _parseTimeOfDay(time);
       return "${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}";
     } catch (e) {
+      print('_convertToHHMM: Error parsing time: $time, returning 00:00');
       return '00:00';
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isWebLayout = MediaQuery.of(context).size.width >= 600;
+    print('build: Rendering with isWebLayout: $isWebLayout');
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        title: Text(
+          AppLocalizations.of(context)!.editBakery,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        backgroundColor: const Color(0xFFFB8C00),
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: const [
+          NotificationIcon(),
+          SizedBox(width: 8),
+        ],
+        ),
+        drawer: const CustomDrawerManager(),
+        body: isWebLayout
+            ? buildFromWeb(context)
+            : buildFromMobile(context),
+    );
+  }
+
+
+  Widget buildFromMobile(BuildContext context) {
+    print('buildFromMobile: Building mobile layout');
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: bakery == null
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFFB8C00),
+              ),
+            )
+          : SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 16),
+                    _buildImageInputWidget(),
+                    const SizedBox(height: 16),
+                    _buildInputName(),
+                    const SizedBox(height: 16),
+                    _buildInputEmail(),
+                    const SizedBox(height: 16),
+                    _buildInputPhone(),
+                    const SizedBox(height: 16),
+                    _buildInputdeliveryFee(),
+                    const SizedBox(height: 16),
+                    _buildOpeningHours(),
+                    const SizedBox(height: 16),
+                    _buildContainerLocalization(bakery!),
+                    const SizedBox(height: 16),
+                    _buildSaveButton(),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget buildFromWeb(BuildContext context) {
+    print('buildFromWeb: Building web layout');
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: bakery == null
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFFB8C00),
+              ),
+            )
+          : SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 24),
+                    _buildImageInputWidget(),
+                    const SizedBox(height: 24),
+                    _buildInputName(),
+                    const SizedBox(height: 24),
+                    _buildInputEmail(),
+                    const SizedBox(height: 24),
+                    _buildInputPhone(),
+                    const SizedBox(height: 24),
+                    _buildInputdeliveryFee(),
+                    const SizedBox(height: 24),
+                    _buildOpeningHours(),
+                    const SizedBox(height: 24),
+                    _buildContainerLocalization(bakery!),
+                    const SizedBox(height: 24),
+                    _buildSaveButton(),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildImageInputWidget() {
+    print('_buildImageInputWidget: Building image input widget');
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Center(
+          child: ImageInputWidget(
+            onImageSelected: _setImage,
+            initialImage: bakery?.image,
+            width: 150,
+            height: 150,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputName() {
+    print('_buildInputName: Building name input');
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: _buildCustomTextField(
+          _nameController,
+          AppLocalizations.of(context)!.bakery_name,
+          Icons.store,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return AppLocalizations.of(context)!.requiredField;
+            }
+            return null;
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputEmail() {
+    print('_buildInputEmail: Building email input');
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: _buildCustomTextField(
+          _emailController,
+          AppLocalizations.of(context)!.bakery_email,
+          Icons.email,
+          validator: (value) {
+            final emailRegExp =
+                RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$");
+            if (!emailRegExp.hasMatch(value!)) {
+              return AppLocalizations.of(context)!.invalidEmail;
+            }
+            return null;
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputPhone() {
+    print('_buildInputPhone: Building phone input');
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: _buildCustomTextField(
+          _phoneController,
+          AppLocalizations.of(context)!.bakery_phone,
+          Icons.phone,
+          validator: (value) {
+            if (value!.length != 8) {
+              return AppLocalizations.of(context)!.phoneLengthError;
+            }
+            return null;
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputdeliveryFee() {
+    print('_buildInputdeliveryFee: Building delivery fee input');
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: _buildCustomTextField(
+          _deliveryFeeController,
+          AppLocalizations.of(context)!.delivery_fee,
+          Icons.local_shipping,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return AppLocalizations.of(context)!.delivery_fee_required;
+            }
+            final fee = double.tryParse(value);
+            if (fee == null || fee < 0) {
+              return AppLocalizations.of(context)!.delivery_fee_invalid;
+            }
+            return null;
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOpeningHours() {
+    print('_buildOpeningHours: Building opening hours');
     List<String> availableDays = [
       'monday',
       'tuesday',
@@ -245,259 +544,190 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
       'sunday',
     ].where((day) => !_openingHours.containsKey(day)).toList();
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFE5E7EB),
-      appBar: AppBar(
-        title: Text(
-          AppLocalizations.of(context)!.editBakery,
-          style: const TextStyle(
-              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
-        ),
-        backgroundColor: Colors.white,
-        actions: const [
-          NotificationIcon(),
-        ],
-      ),
-      drawer: const CustomDrawerManager(),
-      body: bakery == null
-          ? const Center(
-              child: CircularProgressIndicator(
-              color: Color(0xFFFB8C00),
-            ))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 20),
-                    _buildImageInputWidget(),
-                    const SizedBox(height: 20),
-                    _buildInputName(),
-                    const SizedBox(height: 20),
-                    _buildInputEmail(),
-                    const SizedBox(height: 20),
-                    _buildInputPhone(),
-                    const SizedBox(height: 20),
-                    _buildInputdeliveryFee(),
-                    const SizedBox(height: 20),
-                    _buildOpeningHours(availableDays),
-                    const SizedBox(height: 20),
-                    _buildContainerLocalization(bakery!),
-                    _buildSaveButton(),
-                  ],
-                ),
-              ),
-            ),
-    );
-  }
-
-  Widget _buildImageInputWidget() {
-    return Center(
-      child: ImageInputWidget(
-        onImageSelected: _setImage,
-        initialImage: bakery?.image,
-        width: 150,
-        height: 150,
-      ),
-    );
-  }
-
-  Widget _buildInputName() {
-    return _buildCustomTextField(
-      _nameController,
-      AppLocalizations.of(context)!.bakery_name,
-      Icons.store,
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return AppLocalizations.of(context)!.requiredField;
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildInputEmail() {
-    return _buildCustomTextField(
-      _emailController,
-      AppLocalizations.of(context)!.bakery_email,
-      Icons.email,
-      validator: (value) {
-        final emailRegExp =
-            RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$");
-        if (!emailRegExp.hasMatch(value!)) {
-          return AppLocalizations.of(context)!.invalidEmail;
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildInputPhone() {
-    return _buildCustomTextField(
-      _phoneController,
-      AppLocalizations.of(context)!.bakery_phone,
-      Icons.phone,
-      validator: (value) {
-        if (value!.length != 8) {
-          return AppLocalizations.of(context)!.phoneLengthError;
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildInputdeliveryFee() {
-    return _buildCustomTextField(
-      _deliveryFeeController,
-      AppLocalizations.of(context)!.delivery_fee,
-      Icons.local_shipping,
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return AppLocalizations.of(context)!.delivery_fee_required;
-        }
-        final fee = double.tryParse(value);
-        if (fee == null || fee < 0) {
-          return AppLocalizations.of(context)!.delivery_fee_invalid;
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildOpeningHours(List<String> availableDays) {
     final sortedEntries = _openingHours.entries.toList()
       ..sort((a, b) => _orderedDays.indexOf(a.key.toLowerCase()).compareTo(
             _orderedDays.indexOf(b.key.toLowerCase()),
           ));
 
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey),
-        borderRadius: BorderRadius.circular(10),
-        color: Colors.white,
-      ),
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(AppLocalizations.of(context)!.hoursofoperation,
-              style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black)),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppLocalizations.of(context)!.hoursofoperation,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
           const SizedBox(height: 10),
           ...sortedEntries.map((entry) {
             String day = entry.key;
             Map<String, dynamic> dayData = entry.value;
 
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 0, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        Traductions()
-                            .getTranslatedDay(context, day)
-                            .toUpperCase(),
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                          _removeOpeningDay(day);
-                        },
-                      ),
-                    ],
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 2,
+                    blurRadius: 5,
                   ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildTimeField(day, 'start', dayData['start']),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _buildTimeField(day, 'end', dayData['end']),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _buildTimeField(
-                            day, 'deadline', dayData['deadline']),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
                 ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          Traductions()
+                              .getTranslatedDay(context, day)
+                              .toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () {
+                            _removeOpeningDay(day);
+                          },
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildTimeField(day, 'start', dayData['start']),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _buildTimeField(day, 'end', dayData['end']),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child:
+                              _buildTimeField(day, 'deadline', dayData['deadline']),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             );
           }).toList(),
-          const SizedBox(height: 20),
-          _buildDaySelector(availableDays),
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(16.0),
+            child: _buildDaySelector(availableDays),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildContainerLocalization(Bakery bakery) {
+    print('_buildContainerLocalization: Building localization container');
     if ((bakery.subAdministrativeArea?.isNotEmpty ?? false) &&
         (bakery.administrativeArea?.isNotEmpty ?? false)) {
-      return Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-              borderRadius: BorderRadius.circular(10),
-              color: Colors.white,
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
             ),
-            child: Column(
-              children: [
-                if (bakery.street != null && bakery.street != '')
-                  buildAddressRow(
-                      Icons.home,
-                      AppLocalizations.of(context)!.street,
-                      bakery.street ?? ''),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              if (bakery.street != null && bakery.street != '')
                 buildAddressRow(
-                    Icons.map,
-                    AppLocalizations.of(context)!.subAdministrativeArea,
-                    bakery.subAdministrativeArea ?? ''),
-                buildAddressRow(
-                    Icons.place,
-                    AppLocalizations.of(context)!.administrativeArea,
-                    bakery.administrativeArea ?? ''),
-              ],
-            ),
+                  Icons.home,
+                  AppLocalizations.of(context)!.street,
+                  bakery.street ?? '',
+                ),
+              buildAddressRow(
+                Icons.map,
+                AppLocalizations.of(context)!.subAdministrativeArea,
+                bakery.subAdministrativeArea ?? '',
+              ),
+              buildAddressRow(
+                Icons.place,
+                AppLocalizations.of(context)!.administrativeArea,
+                bakery.administrativeArea ?? '',
+              ),
+            ],
           ),
-          SizedBox(
-            height: 20,
-          )
-        ],
+        ),
       );
     } else {
-      return SizedBox.shrink();
+      return const SizedBox.shrink();
     }
   }
 
   Widget buildAddressRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 20.0),
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         children: [
-          Icon(icon, color: Color(0xFFFB8C00)),
-          SizedBox(width: 10),
+          Icon(icon, color: const Color(0xFFFB8C00)),
+          const SizedBox(width: 10),
           Text(
             '$label : ',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(fontSize: 16, color: Colors.black54),
+              style: const TextStyle(fontSize: 16, color: Colors.black54),
             ),
           ),
         ],
@@ -524,6 +754,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
               "${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}";
           setState(() {
             _openingHours[day][key] = formattedTime;
+            print('_buildTimeField: Updated $key for $day to $formattedTime');
           });
         }
       },
@@ -539,6 +770,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
   }
 
   Widget _buildDaySelector(List<String> availableDays) {
+    print('_buildDaySelector: Building day selector, available days: $availableDays');
     return Row(
       children: [
         DropdownButton<String>(
@@ -560,6 +792,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
           onChanged: (value) {
             setState(() {
               _selectedDay = value;
+              print('_buildDaySelector: Selected day: $value');
             });
           },
         ),
@@ -567,24 +800,17 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
         Expanded(
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFFFB8C00),
+              backgroundColor: const Color(0xFFFB8C00),
               minimumSize: const Size(double.infinity, 40),
             ),
             onPressed: _addNewOpeningDay,
-            child: ScrollingWidgetList(
-              height: 20,
-              velocity: 40.0,
-              spacing: 16.0,
-              children: [
-                Text(
-                  AppLocalizations.of(context)!.add_day,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
+            child: Text(
+              AppLocalizations.of(context)!.add_day,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ),
         ),
@@ -593,121 +819,40 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
   }
 
   Widget _buildSaveButton() {
+    print('_buildSaveButton: Building save button, bakery ID: ${bakery?.id}');
     if (bakery?.id == -1) {
-      return Center(
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xFFFB8C00),
-          ),
-          onPressed: _isSaving
-              ? null
-              : () async {
-                  setState(() {
-                    _isSaving = true;
-                  });
-
-                  if (_formKey.currentState?.validate() ?? false) {
-                    if (_openingHours.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(AppLocalizations.of(context)!
-                              .requiredOpeningHours),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                      setState(() {
-                        _isSaving = false;
-                      });
-                      return;
-                    }
-                    if (!_validateOpeningHours()) {
-                      setState(() {
-                        _isSaving = false;
-                      });
-                      return;
-                    }
-
-                    if (bakery!.id == -1 &&
-                        (_imagePath?.isEmpty ?? true) &&
-                        _webImage == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content:
-                              Text(AppLocalizations.of(context)!.requiredImage),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                      setState(() {
-                        _isSaving = false;
-                      });
-                      return;
-                    }
-
-                    String image = _imagePath ?? '';
-                    if (kIsWeb && _webImage != null) {
-                      image = base64Encode(_webImage!);
-                    }
-
-                    Bakery updatedBakery = Bakery(
-                      id: bakery!.id,
-                      name: _nameController.text,
-                      email: _emailController.text,
-                      phone: _phoneController.text,
-                      image: image,
-                      openingHours: jsonEncode(_openingHours),
-                      managerId: bakery!.managerId,
-                      createdAt: bakery!.createdAt,
-                      updatedAt: DateTime.now(),
-                      deliveryFee: double.parse(_deliveryFeeController.text),
-                    );
-
-                    try {
-                      if (bakery!.id == -1) {
-                        await BakeryService()
-                            .createBakery(context, updatedBakery);
-                        fetchData();
-                      } else {
-                        await BakeryService()
-                            .updateBakery(context, updatedBakery, oldimage!);
-                      }
-                    } catch (e) {
-                      print('Error updating bakery: $e');
-                    }
-
-                    setState(() {
-                      _isSaving = false;
-                    });
-                  }
-                },
-          child: _isSaving
-              ? CircularProgressIndicator(color: Colors.white)
-              : Text(
-                  AppLocalizations.of(context)!.save,
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
-                ),
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+            ),
+          ],
         ),
-      );
-    } else {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Center(
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFFFB8C00),
+                backgroundColor: const Color(0xFFFB8C00),
+                minimumSize: const Size(double.infinity, 40),
               ),
               onPressed: _isSaving
                   ? null
                   : () async {
+                      print('_buildSaveButton: Save button pressed');
                       setState(() {
                         _isSaving = true;
                       });
 
                       if (_formKey.currentState?.validate() ?? false) {
                         if (_openingHours.isEmpty) {
+                          print('_buildSaveButton: No opening hours provided');
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(AppLocalizations.of(context)!
@@ -721,6 +866,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
                           return;
                         }
                         if (!_validateOpeningHours()) {
+                          print('_buildSaveButton: Opening hours validation failed');
                           setState(() {
                             _isSaving = false;
                           });
@@ -730,6 +876,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
                         if (bakery!.id == -1 &&
                             (_imagePath?.isEmpty ?? true) &&
                             _webImage == null) {
+                          print('_buildSaveButton: No image provided for new bakery');
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
@@ -746,6 +893,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
                         String image = _imagePath ?? '';
                         if (kIsWeb && _webImage != null) {
                           image = base64Encode(_webImage!);
+                          print('_buildSaveButton: Encoded web image to base64');
                         }
 
                         Bakery updatedBakery = Bakery(
@@ -763,70 +911,222 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
 
                         try {
                           if (bakery!.id == -1) {
+                            print('_buildSaveButton: Creating new bakery');
                             await BakeryService()
                                 .createBakery(context, updatedBakery);
                             fetchData();
                           } else {
-                            await BakeryService().updateBakery(
-                                context, updatedBakery, oldimage!);
+                            print('_buildSaveButton: Updating existing bakery');
+                            await BakeryService()
+                                .updateBakery(context, updatedBakery, oldimage!);
                           }
                         } catch (e) {
-                          print('Error updating bakery: $e');
+                          print('_buildSaveButton: Error updating bakery: $e');
                         }
 
+                        setState(() {
+                          _isSaving = false;
+                        });
+                      } else {
+                        print('_buildSaveButton: Form validation failed');
                         setState(() {
                           _isSaving = false;
                         });
                       }
                     },
               child: _isSaving
-                  ? CircularProgressIndicator(color: Colors.white)
+                  ? const CircularProgressIndicator(color: Colors.white)
                   : Text(
                       AppLocalizations.of(context)!.save,
                       style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
             ),
           ),
-          SizedBox(width: 8),
-          Expanded(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFFFB8C00),
-              ),
-              onPressed: _isSaving
-                  ? null
-                  : () async {
-                      setState(() {
-                        _isSaving = true;
-                      });
+        ),
+      );
+    } else {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFB8C00),
+                    minimumSize: const Size(double.infinity, 40),
+                  ),
+                  onPressed: _isSaving
+                      ? null
+                      : () async {
+                          print('_buildSaveButton: Save button pressed');
+                          setState(() {
+                            _isSaving = true;
+                          });
 
-                      try {
-                        await BakeryService()
-                            .updateBakeryLocalization(context, bakery!.id);
-                      } catch (e) {}
+                          if (_formKey.currentState?.validate() ?? false) {
+                            if (_openingHours.isEmpty) {
+                              print('_buildSaveButton: No opening hours provided');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(AppLocalizations.of(context)!
+                                      .requiredOpeningHours),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              setState(() {
+                                _isSaving = false;
+                              });
+                              return;
+                            }
+                            if (!_validateOpeningHours()) {
+                              print(
+                                  '_buildSaveButton: Opening hours validation failed');
+                              setState(() {
+                                _isSaving = false;
+                              });
+                              return;
+                            }
 
-                      setState(() {
-                        _isSaving = false;
-                      });
-                      fetchData();
-                    },
-              child: _isSaving
-                  ? CircularProgressIndicator(color: Colors.white)
-                  : ScrollingWidgetList(
-                    children:[ Text(
-                        AppLocalizations.of(context)!.save_new_localization,
-                        style: const TextStyle(
+                            if (bakery!.id == -1 &&
+                                (_imagePath?.isEmpty ?? true) &&
+                                _webImage == null) {
+                              print(
+                                  '_buildSaveButton: No image provided for new bakery');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(AppLocalizations.of(context)!
+                                      .requiredImage),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              setState(() {
+                                _isSaving = false;
+                              });
+                              return;
+                            }
+
+                            String image = _imagePath ?? '';
+                            if (kIsWeb && _webImage != null) {
+                              image = base64Encode(_webImage!);
+                              print(
+                                  '_buildSaveButton: Encoded web image to base64');
+                            }
+
+                            Bakery updatedBakery = Bakery(
+                              id: bakery!.id,
+                              name: _nameController.text,
+                              email: _emailController.text,
+                              phone: _phoneController.text,
+                              image: image,
+                              openingHours: jsonEncode(_openingHours),
+                              managerId: bakery!.managerId,
+                              createdAt: bakery!.createdAt,
+                              updatedAt: DateTime.now(),
+                              deliveryFee:
+                                  double.parse(_deliveryFeeController.text),
+                            );
+
+                            try {
+                              if (bakery!.id == -1) {
+                                print('_buildSaveButton: Creating new bakery');
+                                await BakeryService()
+                                    .createBakery(context, updatedBakery);
+                                fetchData();
+                              } else {
+                                print('_buildSaveButton: Updating existing bakery');
+                                await BakeryService().updateBakery(
+                                    context, updatedBakery, oldimage!);
+                              }
+                            } catch (e) {
+                              print('_buildSaveButton: Error updating bakery: $e');
+                            }
+
+                            setState(() {
+                              _isSaving = false;
+                            });
+                          } else {
+                            print('_buildSaveButton: Form validation failed');
+                            setState(() {
+                              _isSaving = false;
+                            });
+                          }
+                        },
+                  child: _isSaving
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(
+                          AppLocalizations.of(context)!.save,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white),
-                      ),]
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFB8C00),
+                    minimumSize: const Size(double.infinity, 40),
                   ),
-            ),
+                  onPressed: _isSaving
+                      ? null
+                      : () async {
+                          print(
+                              '_buildSaveButton: Save localization button pressed');
+                          setState(() {
+                            _isSaving = true;
+                          });
+
+                          try {
+                            await BakeryService()
+                                .updateBakeryLocalization(context, bakery!.id);
+                            print(
+                                '_buildSaveButton: Localization updated successfully');
+                          } catch (e) {
+                            print(
+                                '_buildSaveButton: Error updating localization: $e');
+                          }
+
+                          setState(() {
+                            _isSaving = false;
+                          });
+                          fetchData();
+                        },
+                  child: _isSaving
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(
+                          AppLocalizations.of(context)!.save_new_localization,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       );
     }
   }
@@ -837,7 +1137,7 @@ class _EditingTheBakeryProfileState extends State<EditingTheBakeryProfile> {
     return CustomTextField(
       controller: controller,
       labelText: hintText,
-      icon: icon,
+      icon: Icon(icon),
       validator: validator,
     );
   }

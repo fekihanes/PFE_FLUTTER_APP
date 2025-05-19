@@ -7,9 +7,12 @@ import 'package:flutter_application/view/bakery/Accueil_bakery.dart';
 import 'package:flutter_application/view/bakery/page_facture_par_mois.dart';
 import 'package:flutter_application/view/bakery/payment_status_page.dart';
 import 'package:flutter_application/view/employees/Boulanger/MelangeListPage.dart';
+import 'package:flutter_application/view/employees/Caisse/CashierSalesPage.dart';
 import 'package:flutter_application/view/manager/Article/Gestion_des_Produits.dart';
+import 'package:flutter_application/view/manager/BakeryDashboardPage.dart';
 import 'package:flutter_application/view/manager/Editing_the_bakery_profile.dart';
-import 'package:flutter_application/view/manager/page_management_employees.dart';
+import 'package:flutter_application/view/manager/employee/DailyCashierSalesPage.dart';
+import 'package:flutter_application/view/manager/employee/page_management_employees.dart';
 import 'package:flutter_application/view/manager/primary_material/gestion_de_stock.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -26,6 +29,8 @@ class _CustomDrawerManagerState extends State<CustomDrawerManager> {
   String userName = 'Utilisateur';
   String userEmail = 'email@example.com';
   String selectedLanguage = 'fr';
+  String id='0';
+  String bakey_id='';
 
   @override
   void initState() {
@@ -39,6 +44,8 @@ class _CustomDrawerManagerState extends State<CustomDrawerManager> {
       userImageUrl = prefs.getString('user_picture') ?? '';
       userName = prefs.getString('name') ?? 'Utilisateur';
       userEmail = prefs.getString('email') ?? 'email@example.com';
+      id = prefs.getString('user_id') ?? '0';
+      bakey_id = prefs.getString('my_bakery')=='' ? prefs.getString('bakery_id')! : prefs.getString('my_bakery')!;
     });
   }
 
@@ -56,11 +63,11 @@ class _CustomDrawerManagerState extends State<CustomDrawerManager> {
                       Icon(Icons.dashboard, color: const Color(0xFFFB8C00)),
                   title: Text(AppLocalizations.of(context)!.dashboard),
                   onTap: () {
-                    // Navigator.pushReplacement(
-                    //   context,
-                    //   MaterialPageRoute(
-                    //       builder: (context) => const GestionDesProduits()),
-                    // );
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const BakeryDashboardPage()),
+                    );
                   },
                 ),
                 ListTile(
@@ -153,6 +160,28 @@ ListTile(
                       context,
                       MaterialPageRoute(
                           builder: (context) => const MelangeListPage()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.verified_rounded, color: const Color(0xFFFB8C00)),
+                  title: Text(AppLocalizations.of(context)?.salesList ?? ''),
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>  CashierSalesPage(bakeryId:bakey_id , employeeId: id,)),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.money_off_outlined, color: const Color(0xFFFB8C00)),
+                  title: Text(AppLocalizations.of(context)?.cashierSalesList ?? ''),
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>  DailyCashierSalesPage(bakeryId:bakey_id  )),
                     );
                   },
                 ),

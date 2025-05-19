@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Bakery.dart';
 import 'package:flutter_application/classes/Product.dart';
 import 'package:flutter_application/custom_widgets/customSnackbar.dart';
+import 'package:flutter_application/custom_widgets/showOpeningHoursDialog.dart';
 import 'package:flutter_application/services/users/CommandeService.dart';
 import 'package:flutter_application/view/user/passe_commandes/page_Accueil_bakery.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -35,6 +37,8 @@ class _PasseCommandeState extends State<PasseCommande> {
   final TextEditingController _secondaryAddressController =
       TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  late bool isWebLayout;
+  Map<Product, TextEditingController> _quantityControllers = {};
 
   @override
   void initState() {
@@ -50,49 +54,116 @@ class _PasseCommandeState extends State<PasseCommande> {
     });
   }
 
+  Future<bool> _onBackPressed() async {
+    return true;
+  }
+
+  @override
+  void dispose() {
+    descriptionController.dispose();
+    addressController.dispose();
+    _nameController.dispose();
+    _phoneController.dispose();
+    _secondaryPhoneController.dispose();
+    _secondaryAddressController.dispose();
+    _quantityControllers.forEach((_, controller) => controller.dispose());
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    isWebLayout = MediaQuery.of(context).size.width >= 600;
     final localization = AppLocalizations.of(context)!;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLargeScreen = screenWidth > 900;
 
     return Scaffold(
       backgroundColor: const Color(0xFFE5E7EB),
       appBar: AppBar(
-        title: Text(
-          localization.myOrder,
-          style: const TextStyle(
-              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
+        title: Row(
+          children: [
+            Text(
+              localization.myOrder,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+            ),
+            IconButton(
+              icon: const Icon(Icons.info_outline, color: Colors.white),
+              onPressed: () => showOpeningHoursDialog(context, widget.bakery),
+            ),
+          ],
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFB8C00),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => _navigateToProductSelection(context),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => _onBackPressed().then((canPop) {
+            if (canPop) Navigator.pop(context);
+          }),
         ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SafeArea(
         child: Center(
-          child: isLargeScreen
-              ? _buildDesktopLayout(localization, context)
-              : _buildMobileLayout(localization, context),
+          child: isWebLayout
+              ? buildFromWeb(localization, context)
+              : buildFromMobile(localization, context),
         ),
       ),
     );
   }
 
-  Widget _buildMobileLayout(
-      AppLocalizations localization, BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: _buildMainContent(localization, context),
+Widget buildFromMobile(AppLocalizations localization, BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: SingleChildScrollView(
+        child: _buildMainContent(localization, context),
+      ),
     );
   }
 
-  Widget _buildDesktopLayout(
-      AppLocalizations localization, BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: _buildMainContent(localization, context),
+  Widget buildFromWeb(AppLocalizations localization, BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: SingleChildScrollView(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 2,
+              child: _buildMainContent(localization, context),
+            ),
+            Expanded(
+              flex: 1,
+              child: Container(
+                margin: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.2),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: _buildTotalSection(localization),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -103,70 +174,163 @@ class _PasseCommandeState extends State<PasseCommande> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildUserInfoSection(localization), // Ajouté ici
-          const SizedBox(height: 20),
-          _buildListProduct(localization),
-          const SizedBox(height: 20),
-          _buildButtonAddProduct(localization, context),
-          const SizedBox(height: 20),
-          _buildDateTimeSelection(localization, context),
-          const SizedBox(height: 20),
-          _buildDeliveryAndPaymentOptions(localization),
-          const SizedBox(height: 20),
-          _buildTotalSection(localization),
-          const SizedBox(height: 20),
-          _buildDescriptionField(localization),
-          const SizedBox(height: 30),
-          _buildSubmitButton(localization, context),
+          Container(
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: _buildUserInfoSection(localization),
+          ),
+          Container(
+            margin: const EdgeInsets.all(16),
+            child: _buildListProduct(localization),
+          ),
+          Container(
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: _buildButtonAddProduct(localization, context),
+          ),
+          Container(
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: _buildDateTimeSelection(localization, context),
+          ),
+          Container(
+            margin: const EdgeInsets.all(16),
+            child: _buildDeliveryAndPaymentOptions(localization),
+          ),
+          if (!isWebLayout)
+            Container(
+              margin: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    spreadRadius: 2,
+                    blurRadius: 5,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: _buildTotalSection(localization),
+            ),
+          Container(
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: _buildDescriptionField(localization),
+          ),
+          Container(
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: _buildSubmitButton(localization, context),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildUserInfoSection(AppLocalizations localization) {
-    return Column(
-      children: [
-        _buildFormField(
-          controller: _nameController,
-          label: localization.fullName,
-          icon: Icons.person,
-          isReadOnly: true,
-        ),
-        const SizedBox(height: 15),
-        _buildFormField(
-          controller: _phoneController,
-          label: localization.primaryPhone,
-          icon: Icons.phone,
-          isReadOnly: true,
-        ),
-        const SizedBox(height: 15),
-        _buildAddressField(localization),
-        const SizedBox(height: 15),
-        _buildFormField(
-          controller: _secondaryPhoneController,
-          label: localization.secondaryPhone,
-          icon: Icons.phone_iphone,
-          keyboardType: TextInputType.phone,
-          validator: (value) {
-            if (value != null && value.isNotEmpty) {
-              if (value.length != 8) {
-                return AppLocalizations.of(context)!.phoneLengthError;
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        children: [
+          _buildFormField(
+            controller: _nameController,
+            label: localization.fullName,
+            icon: Icons.person,
+            isReadOnly: true,
+          ),
+          const SizedBox(height: 15),
+          _buildFormField(
+            controller: _phoneController,
+            label: localization.primaryPhone,
+            icon: Icons.phone,
+            isReadOnly: true,
+          ),
+          const SizedBox(height: 15),
+          _buildAddressField(localization),
+          const SizedBox(height: 15),
+          _buildFormField(
+            controller: _secondaryPhoneController,
+            label: localization.secondaryPhone,
+            icon: Icons.phone_iphone,
+            keyboardType: TextInputType.phone,
+            validator: (value) {
+              if (value != null && value.isNotEmpty) {
+                if (value.length != 8) {
+                  return AppLocalizations.of(context)!.phoneLengthError;
+                }
+                if (!RegExp(r'^\d{8}$').hasMatch(value)) {
+                  return AppLocalizations.of(context)!.phoneLengthError;
+                }
               }
-              if (!RegExp(r'^\d{8}$').hasMatch(value)) {
-                return AppLocalizations.of(context)!.phoneLengthError;
-              }
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 15),
-        _buildFormField(
-          controller: _secondaryAddressController,
-          label: localization.secondaryAddress,
-          icon: Icons.location_on,
-          keyboardType: TextInputType.text,
-        ),
-      ],
+              return null;
+            },
+          ),
+          const SizedBox(height: 15),
+          _buildFormField(
+            controller: _secondaryAddressController,
+            label: localization.secondaryAddress,
+            icon: Icons.location_on,
+            keyboardType: TextInputType.text,
+          ),
+        ],
+      ),
     );
   }
 
@@ -215,44 +379,71 @@ class _PasseCommandeState extends State<PasseCommande> {
   }
 
   Widget _buildListProduct(AppLocalizations localization) {
-    return Card(
-      color: Colors.white,
-      shadowColor: Colors.black,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: const BorderSide(
-          color: Colors.grey,
-          width: 2,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            if (widget.products_selected.isEmpty)
-              Center(
+    return Column(
+      children: [
+        if (widget.products_selected.isEmpty)
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: const Border.fromBorderSide(BorderSide(color: Colors.grey, width: 2)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
                 child: Text(
                   localization.emptyCart,
                   style: const TextStyle(color: Colors.grey),
                 ),
-              )
-            else
-              ...widget.products_selected.entries.map((entry) =>
-                  _buildCartItem(entry.key, entry.value, localization)),
-          ],
-        ),
-      ),
+              ),
+            ),
+          )
+        else
+          ...widget.products_selected.entries.map((entry) =>
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: const Border.fromBorderSide(BorderSide(color: Colors.grey, width: 2)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.2),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: _buildCartItem(entry.key, entry.value, localization),
+              )),
+      ],
     );
   }
 
   void _removeProduct(Product product) {
     setState(() {
       widget.products_selected.remove(product);
+      _quantityControllers[product]?.dispose();
+      _quantityControllers.remove(product);
     });
   }
 
   Widget _buildCartItem(
       Product product, int quantity, AppLocalizations localization) {
+    if (!_quantityControllers.containsKey(product)) {
+      _quantityControllers[product] = TextEditingController(text: quantity.toString());
+    }
+
     return ListTile(
       leading: CachedNetworkImage(
         imageUrl: ApiConfig.changePathImage(product.picture),
@@ -267,7 +458,7 @@ class _PasseCommandeState extends State<PasseCommande> {
         ),
         errorWidget: (context, url, error) => Container(
           color: Colors.grey[200],
-          child: const Icon(Icons.store, size: 40), // Smaller icon
+          child: const Icon(Icons.store, size: 40),
         ),
         imageBuilder: (context, imageProvider) => ClipRRect(
           borderRadius: BorderRadius.circular(10),
@@ -283,38 +474,55 @@ class _PasseCommandeState extends State<PasseCommande> {
             height: 20,
             width: 20,
             decoration: const BoxDecoration(
-              color: Color(0xFFFB8C00), // Couleur de fond black
-              shape: BoxShape.circle, // Forme circulaire
+              color: Color(0xFFFB8C00),
+              shape: BoxShape.circle,
             ),
             child: Center(
-              // Centrer l'icône à l'intérieur du bouton
               child: IconButton(
                 icon: const Icon(Icons.remove, size: 20),
                 onPressed: () => _updateQuantity(product, quantity - 1),
-                color: Colors.white, // Couleur de l'icône
-                padding: EdgeInsets
-                    .zero, // Supprimer l'espace par défaut de IconButton
+                color: Colors.white,
+                padding: EdgeInsets.zero,
               ),
             ),
           ),
           const SizedBox(width: 3),
-          Text('$quantity'),
+          SizedBox(
+            width: 50,
+            child: TextField(
+              controller: _quantityControllers[product],
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+              ),
+              onChanged: (value) {
+                int? newQty = int.tryParse(value);
+                if (newQty != null && newQty >= 0) {
+                  _updateQuantity(product, newQty);
+                } else {
+                  _quantityControllers[product]?.text = quantity.toString();
+                }
+              },
+            ),
+          ),
           const SizedBox(width: 3),
           Container(
             height: 20,
             width: 20,
             decoration: const BoxDecoration(
-              color: Color(0xFFFB8C00), // Couleur de fond black
-              shape: BoxShape.circle, // Forme circulaire
+              color: Color(0xFFFB8C00),
+              shape: BoxShape.circle,
             ),
             child: Center(
-              // Centrer l'icône à l'intérieur du bouton
               child: IconButton(
                 icon: const Icon(Icons.add, size: 20),
                 onPressed: () => _updateQuantity(product, quantity + 1),
-                color: Colors.white, // Couleur de l'icône
-                padding: EdgeInsets
-                    .zero, // Supprimer l'espace par défaut de IconButton
+                color: Colors.white,
+                padding: EdgeInsets.zero,
               ),
             ),
           ),
@@ -331,8 +539,11 @@ class _PasseCommandeState extends State<PasseCommande> {
     setState(() {
       if (newQuantity > 0) {
         widget.products_selected[product] = newQuantity;
+        _quantityControllers[product]?.text = newQuantity.toString();
       } else {
         widget.products_selected.remove(product);
+        _quantityControllers[product]?.dispose();
+        _quantityControllers.remove(product);
       }
     });
   }
@@ -366,16 +577,19 @@ class _PasseCommandeState extends State<PasseCommande> {
 
   Widget _buildDateTimeSelection(
       AppLocalizations localization, BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildDatePicker(localization, context),
-        ),
-        const SizedBox(width: 20),
-        Expanded(
-          child: _buildTimePicker(localization, context),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildDatePicker(localization, context),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: _buildTimePicker(localization, context),
+          ),
+        ],
+      ),
     );
   }
 
@@ -460,7 +674,7 @@ class _PasseCommandeState extends State<PasseCommande> {
           labelText: localization.chooseTime,
           prefixIcon: const Icon(Icons.access_time),
         ),
-        child: Text(selectedTime != null
+        child: Text(selectedDate != null
             ? "${selectedTime!.hour}:${selectedTime!.minute}"
             : localization.selectTime),
       ),
@@ -469,176 +683,187 @@ class _PasseCommandeState extends State<PasseCommande> {
 
   Widget _buildDeliveryAndPaymentOptions(AppLocalizations localization) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildReceptionModeSection(localization),
-        const SizedBox(height: 20),
-        _buildPaymentModeSection(localization),
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: const Border.fromBorderSide(BorderSide(color: Colors.grey, width: 2)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.2),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: _buildReceptionModeSection(localization),
+        ),
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: const Border.fromBorderSide(BorderSide(color: Colors.grey, width: 2)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.2),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: _buildPaymentModeSection(localization),
+        ),
       ],
     );
   }
 
   Widget _buildReceptionModeSection(AppLocalizations localization) {
-    return Card(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Colors.grey, width: 2), // Bordure orange
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              localization.receptionMode,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Column(
-              children: [
-                RadioListTile<String>(
-                  title: Row(
-                    children: [
-                      const FaIcon(FontAwesomeIcons.store,
-                          color: Colors.black), // Icône magasin
-                      const SizedBox(width: 8),
-                      Text(localization.pickup),
-                    ],
-                  ),
-                  value: 'pickup',
-                  groupValue: deliveryMode,
-                  activeColor: Colors.blue, // Cercle bleu
-                  onChanged: (value) => setState(() {
-                    deliveryMode = value;
-                    paymentMode =
-                        null; // Reset payment mode when changing reception
-                  }),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            localization.receptionMode,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          Column(
+            children: [
+              RadioListTile<String>(
+                title: Row(
+                  children: [
+                    const FaIcon(FontAwesomeIcons.store, color: Colors.black),
+                    const SizedBox(width: 8),
+                    Text(localization.pickup),
+                  ],
                 ),
-                const Divider(),
-                RadioListTile<String>(
-                  title: Row(
-                    children: [
-                      const FaIcon(FontAwesomeIcons.truck,
-                          color: Colors.black), // Icône livraison
-                      const SizedBox(width: 8),
-                      Text(localization.delivery),
-                    ],
-                  ),
-                  value: 'delivery',
-                  groupValue: deliveryMode,
-                  activeColor: Colors.blue,
-                  onChanged: (value) => setState(() {
-                    deliveryMode = value;
-                    paymentMode =
-                        null; // Reset payment mode when changing reception
-                  }),
+                value: 'pickup',
+                groupValue: deliveryMode,
+                activeColor: Colors.blue,
+                onChanged: (value) => setState(() {
+                  deliveryMode = value;
+                  paymentMode = null;
+                }),
+              ),
+              const Divider(),
+              RadioListTile<String>(
+                title: Row(
+                  children: [
+                    const FaIcon(FontAwesomeIcons.truck, color: Colors.black),
+                    const SizedBox(width: 8),
+                    Text(localization.delivery),
+                  ],
                 ),
-              ],
-            ),
-          ],
-        ),
+                value: 'delivery',
+                groupValue: deliveryMode,
+                activeColor: Colors.blue,
+                onChanged: (value) => setState(() {
+                  deliveryMode = value;
+                  paymentMode = null;
+                }),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildPaymentModeSection(AppLocalizations localization) {
-    return Card(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: Colors.grey, width: 2), // Bordure black
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              localization.paymentMethod,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            if (deliveryMode == 'delivery')
-              Column(
-                children: [
-                  RadioListTile<String>(
-                    title: Row(
-                      children: [
-                        const FaIcon(FontAwesomeIcons.moneyBillWave,
-                            color: Colors.black),
-                        const SizedBox(width: 8),
-                        Text(localization.cashOnDelivery),
-                      ],
-                    ),
-                    value: 'cash_delivery',
-                    groupValue: paymentMode,
-                    activeColor: Colors.blue, // Cercle bleu
-                    onChanged: (value) => setState(() => paymentMode = value),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            localization.paymentMethod,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          if (deliveryMode == 'delivery')
+            Column(
+              children: [
+                RadioListTile<String>(
+                  title: Row(
+                    children: [
+                      const FaIcon(FontAwesomeIcons.moneyBillWave,
+                          color: Colors.black),
+                      const SizedBox(width: 8),
+                      Text(localization.cashOnDelivery),
+                    ],
                   ),
-                  const Divider(),
-                  RadioListTile<String>(
-                    title: Row(
-                      children: [
-                        const FaIcon(FontAwesomeIcons.creditCard,
-                            color: Colors.black),
-                        const SizedBox(width: 8),
-                        Text(localization.onlinePayment),
-                      ],
-                    ),
-                    value: 'online',
-                    groupValue: paymentMode,
-                    activeColor: Colors.blue,
-                    onChanged: (value) => setState(() => paymentMode = value),
-                  ),
-                ],
-              )
-            else if (deliveryMode == 'pickup')
-              Column(
-                children: [
-                  RadioListTile<String>(
-                    title: Row(
-                      children: [
-                        const FaIcon(FontAwesomeIcons.store,
-                            color: Colors.black),
-                        const SizedBox(width: 8),
-                        Text(localization.inStorePayment),
-                      ],
-                    ),
-                    value: 'cash_pickup',
-                    groupValue: paymentMode,
-                    activeColor: Colors.blue,
-                    onChanged: (value) => setState(() => paymentMode = value),
-                  ),
-                  const Divider(),
-                  RadioListTile<String>(
-                    title: Row(
-                      children: [
-                        const FaIcon(FontAwesomeIcons.creditCard,
-                            color: Colors.black),
-                        const SizedBox(width: 8),
-                        Text(localization.onlinePayment),
-                      ],
-                    ),
-                    value: 'online',
-                    groupValue: paymentMode,
-                    activeColor: Colors.blue,
-                    onChanged: (value) => setState(() => paymentMode = value),
-                  ),
-                ],
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Row(
-                  children: [
-                    Text(
-                      localization.selectReceptionFirst,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  ],
+                  value: 'cash_delivery',
+                  groupValue: paymentMode,
+                  activeColor: Colors.blue,
+                  onChanged: (value) => setState(() => paymentMode = value),
                 ),
+                const Divider(),
+                RadioListTile<String>(
+                  title: Row(
+                    children: [
+                      const FaIcon(FontAwesomeIcons.creditCard,
+                          color: Colors.black),
+                      const SizedBox(width: 8),
+                      Text(localization.onlinePayment),
+                    ],
+                  ),
+                  value: 'online',
+                  groupValue: paymentMode,
+                  activeColor: Colors.blue,
+                  onChanged: (value) => setState(() => paymentMode = value),
+                ),
+              ],
+            )
+          else if (deliveryMode == 'pickup')
+            Column(
+              children: [
+                RadioListTile<String>(
+                  title: Row(
+                    children: [
+                      const FaIcon(FontAwesomeIcons.store, color: Colors.black),
+                      const SizedBox(width: 8),
+                      Text(localization.inStorePayment),
+                    ],
+                  ),
+                  value: 'cash_pickup',
+                  groupValue: paymentMode,
+                  activeColor: Colors.blue,
+                  onChanged: (value) => setState(() => paymentMode = value),
+                ),
+                const Divider(),
+                RadioListTile<String>(
+                  title: Row(
+                    children: [
+                      const FaIcon(FontAwesomeIcons.creditCard,
+                          color: Colors.black),
+                      const SizedBox(width: 8),
+                      Text(localization.onlinePayment),
+                    ],
+                  ),
+                  value: 'online',
+                  groupValue: paymentMode,
+                  activeColor: Colors.blue,
+                  onChanged: (value) => setState(() => paymentMode = value),
+                ),
+              ],
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  Text(
+                    localization.selectReceptionFirst,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ],
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -647,52 +872,46 @@ class _PasseCommandeState extends State<PasseCommande> {
     final total = widget.products_selected.entries
         .fold(0.0, (sum, entry) => sum + (entry.key.price * entry.value));
 
-    double? deliveryFee = widget.bakery.deliveryFee ??
-        0; // Remplace ceci par le vrai tarif de livraison
+    double deliveryFee = widget.bakery.deliveryFee;
 
-    return Card(
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              localization.total,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            deliveryMode == 'delivery'
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        "${total.toStringAsFixed(2)} ${localization.dt}",
-                        style:
-                            const TextStyle(fontSize: 16, color: Colors.black),
-                      ),
-                      Text(
-                        "+ ${deliveryFee.toStringAsFixed(2)} ${localization.dt} (${localization.deliveryFee})",
-                        style:
-                            const TextStyle(fontSize: 14, color: Colors.grey),
-                      ),
-                      Text(
-                        "${(total + deliveryFee).toStringAsFixed(2)} ${localization.dt}",
-                        style: const TextStyle(
-                            fontSize: 18,
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  )
-                : Text(
-                    "${total.toStringAsFixed(2)} ${localization.dt}",
-                    style: const TextStyle(
-                        fontSize: 18,
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold),
-                  ),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            localization.total,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          deliveryMode == 'delivery'
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      "${total.toStringAsFixed(3)} ${localization.dt}",
+                      style: const TextStyle(fontSize: 16, color: Colors.black),
+                    ),
+                    Text(
+                      "+ ${deliveryFee.toStringAsFixed(3)} ${localization.dt} (${localization.deliveryFee})",
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    Text(
+                      "${(total + deliveryFee).toStringAsFixed(3)} ${localization.dt}",
+                      style: const TextStyle(
+                          fontSize: 18,
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                )
+              : Text(
+                  "${total.toStringAsFixed(3)} ${localization.dt}",
+                  style: const TextStyle(
+                      fontSize: 18,
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold),
+                ),
+        ],
       ),
     );
   }
@@ -701,17 +920,18 @@ class _PasseCommandeState extends State<PasseCommande> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              spreadRadius: 2,
-              blurRadius: 5,
-              offset: const Offset(0, 3),
-            ),
-          ]),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: TextFormField(
         controller: descriptionController,
         decoration: InputDecoration(
@@ -722,10 +942,8 @@ class _PasseCommandeState extends State<PasseCommande> {
             fontWeight: FontWeight.bold,
           ),
           floatingLabelBehavior: FloatingLabelBehavior.auto,
+          border: InputBorder.none,
         ),
-        // validator: (value) =>
-        //     value?.isEmpty ?? true ? localization.requiredField : null,
-        // maxLines: 2,
       ),
     );
   }
@@ -734,17 +952,18 @@ class _PasseCommandeState extends State<PasseCommande> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              spreadRadius: 2,
-              blurRadius: 5,
-              offset: const Offset(0, 3),
-            ),
-          ]),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: TextFormField(
         controller: addressController,
         decoration: InputDecoration(
@@ -756,10 +975,10 @@ class _PasseCommandeState extends State<PasseCommande> {
             fontWeight: FontWeight.bold,
           ),
           floatingLabelBehavior: FloatingLabelBehavior.auto,
+          border: InputBorder.none,
         ),
         validator: (value) =>
             value?.isEmpty ?? true ? localization.requiredField : null,
-        //maxLines: 2,
       ),
     );
   }
@@ -849,7 +1068,7 @@ class _PasseCommandeState extends State<PasseCommande> {
     Customsnackbar().showErrorSnackbar(context, message);
   }
 
-  pay(BuildContext context) {
+  void pay(BuildContext context) {
     CommandeService().sendCommande(
       context,
       bakeryId: widget.bakery.id,
@@ -876,5 +1095,11 @@ class _PasseCommandeState extends State<PasseCommande> {
                 products_selected: widget.products_selected,
               )),
     );
+  }
+}
+
+extension StringExtension on String {
+  String capitalize() {
+    return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
   }
 }

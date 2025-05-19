@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedUserResponse.dart';
 import 'package:flutter_application/classes/user_class.dart';
+import 'package:flutter_application/custom_widgets/CustomDrawer_caissier.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
+import 'package:flutter_application/custom_widgets/NotificationIcon.dart';
 import 'package:flutter_application/services/manager/managment_employees.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_application/services/emloyees/InvoiceService.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PageFactureParMois extends StatefulWidget {
   const PageFactureParMois({super.key});
@@ -31,6 +34,7 @@ class _PageFactureParMoisState extends State<PageFactureParMois> {
   String? nextPageUrl;
   UserClass? selectedUser;
   UserClass? dropdownValue;
+  String role = '';
 
   @override
   void initState() {
@@ -39,6 +43,8 @@ class _PageFactureParMoisState extends State<PageFactureParMois> {
   }
 
   void _initializeData() async {
+    final prefs = await SharedPreferences.getInstance();
+    role = prefs.getString('role') ?? '';
     if (!mounted) return;
     setState(() => isBigLoading = true);
     try {
@@ -96,12 +102,13 @@ class _PageFactureParMoisState extends State<PageFactureParMois> {
       if (mounted) {
         setState(() {
           specialCustomers = (customers as List<UserClass>?) ?? [];
-          dropdownValue = null; // No automatic selection
+          dropdownValue = null;
           selectedUser = null;
         });
       }
     } catch (e) {
       if (mounted) {
+        // Handle error silently as per original code
       }
     }
   }
@@ -125,6 +132,10 @@ class _PageFactureParMoisState extends State<PageFactureParMois> {
     }
   }
 
+  Future<bool> _onBackPressed() async {
+    return true;
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -135,10 +146,15 @@ class _PageFactureParMoisState extends State<PageFactureParMois> {
 
   @override
   Widget build(BuildContext context) {
+    bool isWebLayout = MediaQuery.of(context).size.width >= 600;
+
     return Scaffold(
       appBar: _buildAppBar(),
-      drawer: const CustomDrawerManager(),
-      body: isBigLoading ? _buildLoadingScreen() : _buildMainContent(),
+      drawer: role == 'manager' ? const CustomDrawerManager() : const CustomDrawerCaissier(),
+      body: isBigLoading
+          ? _buildLoadingScreen()
+          
+              : buildFromMobile(context),
     );
   }
 
@@ -147,11 +163,16 @@ class _PageFactureParMoisState extends State<PageFactureParMois> {
       title: Text(
         AppLocalizations.of(context)!.monthlyInvoice,
         style: TextStyle(
-          color: Colors.black,
+          color: Colors.white,
           fontWeight: FontWeight.bold,
           fontSize: MediaQuery.of(context).size.width < 600 ? 18 : 20,
         ),
       ),
+      backgroundColor: const Color(0xFFFB8C00),
+      iconTheme: const IconThemeData(color: Colors.white),
+      actions: const [
+        NotificationIcon(),
+      ],
     );
   }
 
@@ -168,24 +189,45 @@ class _PageFactureParMoisState extends State<PageFactureParMois> {
     );
   }
 
-  Widget _buildMainContent() {
+  Widget buildFromMobile(BuildContext context) {
     return Container(
-      color: const Color(0xFFE5E7EB),
-      child: Column(
-        children: [
-          _buildInput(),
-          _buildDateInput(),
-          const SizedBox(height: 8),
-          Expanded(
-            child: _buildUserList(),
-          ),
-          _buildPagination(),
-        ],
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: _buildInput(),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: _buildDateInput(),
+            ),
+            const SizedBox(height: 8),
+            _buildUserList(),
+            const SizedBox(height: 8),
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: _buildPagination(),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildInput() {
+ Widget _buildInput() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
@@ -208,82 +250,80 @@ class _PageFactureParMoisState extends State<PageFactureParMois> {
             ),
           ),
           const SizedBox(width: 8),
-Expanded(
-  flex: 1,
-  child: DropdownButtonFormField<UserClass?>(
-    value: dropdownValue,
-    hint: Text(
-      AppLocalizations.of(context)!.selectCustomer,
-      style: TextStyle(
-        color: Colors.grey[600],
-        fontSize: 16,
-      ),
-    ),
-    items: [
-      // "No one selected" option
-      DropdownMenuItem<UserClass?>(
-        value: null,
-        child: Text(
-          AppLocalizations.of(context)!.noOneSelected,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-      ),
-      // User options
-      ...specialCustomers.map((UserClass user) {
-        return DropdownMenuItem<UserClass?>(
-          value: user,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Text(
-              user.name,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
+          Expanded(
+            flex: 1,
+            child: DropdownButtonFormField<UserClass?>(
+              value: dropdownValue,
+              hint: Text(
+                AppLocalizations.of(context)!.selectCustomer,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                ),
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
+              items: [
+                DropdownMenuItem<UserClass?>(
+                  value: null,
+                  child: Text(
+                    AppLocalizations.of(context)!.noOneSelected,
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+                ...specialCustomers.map((UserClass user) {
+                  return DropdownMenuItem<UserClass?>(
+                    value: user,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        user.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ],
+              onChanged: (UserClass? newValue) {
+                setState(() {
+                  dropdownValue = newValue;
+                  selectedUser = newValue;
+                });
+              },
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.grey, width: 1),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.grey, width: 1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.orange, width: 2),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 16,
+              ),
+              icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
+              dropdownColor: Colors.white,
+              elevation: 2,
+              borderRadius: BorderRadius.circular(12),
+              isExpanded: true,
             ),
           ),
-        );
-      }).toList(),
-    ],
-    onChanged: (UserClass? newValue) {
-      setState(() {
-        dropdownValue = newValue;
-        selectedUser = newValue;
-      });
-    },
-    decoration: InputDecoration(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.grey, width: 1),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.grey, width: 1),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.orange, width: 2),
-      ),
-      filled: true,
-      fillColor: Colors.white,
-    ),
-    style: const TextStyle(
-      color: Colors.black,
-      fontSize: 16,
-    ),
-    icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
-    dropdownColor: Colors.white,
-    elevation: 2,
-    borderRadius: BorderRadius.circular(12),
-    isExpanded: true,
-  ),
-),
         ],
       ),
     );
@@ -336,47 +376,56 @@ Expanded(
 
   Widget _buildUserList() {
     if (users.isEmpty && !isLoading) {
-      return Center(
-        child: Text(
-          AppLocalizations.of(context)!.noUsersFound,
-          style: const TextStyle(
-            fontSize: 18,
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
+      return Card(
+        elevation: 6,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.5,
+          child: Center(
+            child: Text(
+              AppLocalizations.of(context)!.noUsersFound,
+              style: const TextStyle(
+                fontSize: 18,
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ),
       );
     }
 
-    return isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: users.length,
-            itemBuilder: (context, index) {
-              final user = users[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-                elevation: 3,
-                child: ListTile(
-                  title: Text(
-                    user.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+    return SingleChildScrollView(
+      child: isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFB8C00)))
+          : ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: users.length,
+              itemBuilder: (context, index) {
+                final user = users[index];
+                return Card(
+                  elevation: 6,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: ListTile(
+                    title: Text(
+                      user.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(user.email),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      setState(() {
+                        selectedUser = user;
+                        dropdownValue = specialCustomers.contains(user) ? user : null;
+                      });
+                    },
                   ),
-                  subtitle: Text(user.email),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    setState(() {
-                      selectedUser = user;
-                      dropdownValue = specialCustomers.contains(user) ? user : null;
-                    });
-                  },
-                ),
-              );
-            },
-          );
+                );
+              },
+            ),
+    );
   }
 
   Widget _buildPagination() {
@@ -393,6 +442,7 @@ Expanded(
               dateFinController: _dateFinController,
             ),
           ),
+          
       ],
     );
   }
@@ -411,6 +461,14 @@ Expanded(
         decoration: BoxDecoration(
           color: prevPageUrl != null ? arrowColor : disabledArrowColor,
           borderRadius: BorderRadius.circular(5.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: GestureDetector(
           onTap: prevPageUrl != null
@@ -443,6 +501,14 @@ Expanded(
               decoration: BoxDecoration(
                 color: currentPage == i ? arrowColor : Colors.grey[300],
                 borderRadius: BorderRadius.circular(5.0),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 2,
+                    blurRadius: 5,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
               child: Text(
                 '$i',
@@ -464,6 +530,14 @@ Expanded(
         decoration: BoxDecoration(
           color: nextPageUrl != null ? arrowColor : disabledArrowColor,
           borderRadius: BorderRadius.circular(5.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: GestureDetector(
           onTap: nextPageUrl != null
@@ -480,9 +554,12 @@ Expanded(
     );
     pageLinks.add(const Spacer());
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: pageLinks,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: pageLinks,
+      ),
     );
   }
 
@@ -493,51 +570,49 @@ Expanded(
     required TextEditingController dateFinController,
   }) {
     return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          elevation: 3,
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  AppLocalizations.of(context)!.selectedUser,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+      padding: const EdgeInsets.all(16.0),
+      child: Card(
+        elevation: 6,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppLocalizations.of(context)!.selectedUser,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildUserInfoRow(
-                            icon: FontAwesomeIcons.user,
-                            label: AppLocalizations.of(context)!.name,
-                            value: selectedUser.name,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildUserInfoRow(
-                            icon: FontAwesomeIcons.envelope,
-                            label: AppLocalizations.of(context)!.email,
-                            value: selectedUser.email,
-                          ),
-                        ],
-                      ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildUserInfoRow(
+                          icon: FontAwesomeIcons.user,
+                          label: AppLocalizations.of(context)!.name,
+                          value: selectedUser.name,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildUserInfoRow(
+                          icon: FontAwesomeIcons.envelope,
+                          label: AppLocalizations.of(context)!.email,
+                          value: selectedUser.email,
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    _buildGenerateButton(context, selectedUser),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                  const SizedBox(width: 12),
+                  _buildGenerateButton(context, selectedUser),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -549,19 +624,34 @@ Expanded(
     required String label,
     required String value,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        FaIcon(icon, size: 16),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            '$label: $value',
-            overflow: TextOverflow.ellipsis,
-            maxLines: 2,
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: Offset(0, 2),
           ),
-        ),
-      ],
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FaIcon(icon, size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$label: $value',
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

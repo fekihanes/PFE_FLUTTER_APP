@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_application/classes/Commande.dart';
 import 'package:flutter_application/classes/Product.dart';
 import 'package:flutter_application/custom_widgets/customSnackbar.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
@@ -12,6 +13,21 @@ class CommandeService {
   static String baseUrl = ApiConfig.baseUrl;
   final http.Client _client = http.Client();
 
+  Future<List<Commande>> getUserOrders() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('auth_token');
+  final response = await http.get(Uri.parse('${ApiConfig.baseUrl}commandes/user-orders'),
+   headers: {'Authorization': 'Bearer $token',
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+   });
+  if (response.statusCode == 200) {
+    final List<dynamic> data = jsonDecode(response.body)['data'];
+    return data.map((json) => Commande.fromJson(json)).toList();
+  } else {
+    throw Exception('Failed to load orders');
+  }
+}
   Future<void> sendCommande(
     BuildContext context, {
     required int bakeryId,
@@ -132,7 +148,7 @@ class CommandeService {
     }
   }
 
-  Future<void> commandes_store_cash_pickup(
+  Future<int> commandes_store_cash_pickup(
     BuildContext context, {
     required int bakeryId,
     required Map<Product, int> productsSelected,
@@ -153,7 +169,7 @@ class CommandeService {
     if (token == null) {
       Customsnackbar().showErrorSnackbar(
           context, AppLocalizations.of(context)!.tokenNotFound);
-      return;
+      return 0;
     }
 
     // Transformation des produits en listes
@@ -191,6 +207,7 @@ class CommandeService {
       if (response.statusCode == 201) {
         Customsnackbar().showSuccessSnackbar(
             context, AppLocalizations.of(context)!.orderSuccess);
+        return 1;
       } else if (response.statusCode == 405) {
         // Token expired or refresh needed
         bool refreshed = await AuthService().refreshToken();
@@ -212,8 +229,19 @@ class CommandeService {
         } else {
           // Refresh failed, show error
           await AuthService().expaildtokent(context);
-          return null;
+          return 0;
         }
+      }else if(response.statusCode == 422){
+        final jsonResponse = jsonDecode(response.body);
+        String message = jsonResponse['message'] ?? 'Error occurred.';
+        Customsnackbar().showErrorSnackbar(context, message);
+        return 0;
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        final jsonResponse = jsonDecode(response.body);
+        String message = jsonResponse['message'] ?? 'Unauthenticated.';
+        Customsnackbar().showErrorSnackbar(context, message);
+        return 0;
+
       } else if (response.statusCode == 401 || response.statusCode == 403) {
         final jsonResponse = jsonDecode(response.body);
         String message = jsonResponse['message'] ?? 'Unauthenticated.';
@@ -234,21 +262,21 @@ class CommandeService {
                 descriptionCommande: descriptionCommande);
           } else {
             await AuthService().expaildtokent(context);
-            return null;
+            return 0;
           }
         }
         Customsnackbar().showErrorSnackbar(context, message);
-        return null;
+        return 0;
       } else {
         Customsnackbar().showErrorSnackbar(
             context, AppLocalizations.of(context)!.errorOccurred);
-        return null;
+        return 0;
       }
     } catch (e) {
       Customsnackbar().showErrorSnackbar(
           context, AppLocalizations.of(context)!.networkError);
 
-      return null;
+      return 0;
     }
   }
 

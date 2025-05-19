@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter_application/services/websocket/Background_notification_service.dart';
 import 'package:flutter_application/services/websocket/websocket_client.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 
 class BackgroundService {
   static Future<void> initialize() async {

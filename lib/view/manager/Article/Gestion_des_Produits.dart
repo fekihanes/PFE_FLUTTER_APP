@@ -8,9 +8,9 @@ import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
 import 'package:flutter_application/services/Bakery/bakery_service.dart';
 import 'package:flutter_application/services/manager/Products_service.dart';
 import 'package:flutter_application/view/manager/Article/AddProductPage.dart';
+import 'package:flutter_application/view/manager/Article/ArticleDetailsPageById.dart';
 import 'package:flutter_application/view/manager/Article/UpdateProductPage.dart';
 import 'package:flutter_application/view/manager/Article/backUProductPage.dart';
-import 'package:flutter_application/view/manager/Article/relation_entre_produit_et_materiaux_primaire/create_relation.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class GestionDesProduits extends StatefulWidget {
@@ -84,21 +84,22 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
 
   @override
   Widget build(BuildContext context) {
+    final isWebLayout = MediaQuery.of(context).size.width >= 600 || kIsWeb;
     return Scaffold(
-      backgroundColor: const Color(0xFFE5E7EB),
+      backgroundColor: isWebLayout ? Colors.white : const Color(0xFFE5E7EB),
       appBar: AppBar(
         title: Text(
           AppLocalizations.of(context)!.productManagement,
-          style: const TextStyle(
-            color: Colors.black,
+          style: TextStyle(
+            color: Colors.white,
             fontWeight: FontWeight.bold,
-            fontSize: 20,
+            fontSize: isWebLayout ? 24 : 20,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFB8C00),
         actions: [
           IconButton(
-            icon: const Icon(Icons.compare_arrows, color: Colors.black),
+            icon: const Icon(Icons.compare_arrows, color: Colors.white),
             onPressed: () {
               Navigator.pushReplacement(
                 context,
@@ -112,26 +113,54 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
         ],
       ),
       drawer: const CustomDrawerManager(),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildContproduct(),
-            const SizedBox(height: 20),
-            _buildInput(),
-            const SizedBox(height: 20),
-            _buildListproduct(),
-            _buildPagination(),
-          ],
-        ),
+      body: isWebLayout ? buildFromWeb(context) : buildFromMobile(context),
+    );
+  }
+
+  Widget buildFromMobile(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildContproduct(isWeb: false),
+          const SizedBox(height: 16),
+          _buildInput(isWeb: false),
+          const SizedBox(height: 16),
+          _buildListproduct(isWeb: false),
+          _buildPagination(),
+        ],
       ),
     );
   }
 
-  Widget _buildContproduct() {
+  Widget buildFromWeb(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildContproduct(isWeb: true),
+          const SizedBox(height: 24),
+          _buildInput(isWeb: true),
+          const SizedBox(height: 24),
+          _buildListproduct(isWeb: true),
+          _buildPagination(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContproduct({required bool isWeb}) {
+    return Container(
+      padding: EdgeInsets.all(isWeb ? 24.0 : 16.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -148,18 +177,18 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
         children: [
           Text(
             AppLocalizations.of(context)!.totalProducts,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.grey,
-              fontSize: 16,
+              fontSize: isWeb ? 18 : 16,
               fontWeight: FontWeight.bold,
             ),
           ),
           const Spacer(),
           Text(
             total.toString(),
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.black,
-              fontSize: 24,
+              fontSize: isWeb ? 28 : 24,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -168,7 +197,7 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
     );
   }
 
-  Widget _buildInput() {
+  Widget _buildInput({required bool isWeb}) {
     return TextField(
       controller: _searchController,
       decoration: InputDecoration(
@@ -180,16 +209,21 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
         ),
         filled: true,
         fillColor: Colors.white,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: isWeb ? 20 : 16,
+          vertical: isWeb ? 14 : 12,
+        ),
       ),
+      style: TextStyle(fontSize: isWeb ? 16 : 14),
       onChanged: (value) {
         fetchProducts();
       },
     );
   }
 
-  Widget _buildListproduct() {
+  Widget _buildListproduct({required bool isWeb}) {
     if (isLoading) {
-      return const Expanded(
+      return Expanded(
         child: Center(
           child: CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFB8C00)),
@@ -203,8 +237,8 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
         child: Center(
           child: Text(
             AppLocalizations.of(context)!.noProductFound,
-            style: const TextStyle(
-              fontSize: 18,
+            style: TextStyle(
+              fontSize: isWeb ? 20 : 18,
               fontWeight: FontWeight.bold,
               color: Colors.grey,
             ),
@@ -218,136 +252,157 @@ class _GestionDesProduitsState extends State<GestionDesProduits> {
         itemCount: products.length,
         itemBuilder: (context, index) {
           final product = products[index];
-          return Container(
-            margin: const EdgeInsets.only(bottom: 15.0),
-            padding: const EdgeInsets.all(12.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
-                  spreadRadius: 2,
-                  blurRadius: 5,
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ArticleDetailsPageById(product: product),
                 ),
-              ],
-            ),
-            child: Row(
-              children: [
-                CachedNetworkImage(
-                  imageUrl: ApiConfig.changePathImage(product.picture),
-                  width: 100,
-                  height: 100,
-                  fit: BoxFit.cover,
-                  progressIndicatorBuilder: (context, url, progress) => Center(
-                    child: CircularProgressIndicator(
-                      value: progress.progress,
-                      color: const Color(0xFFFB8C00),
+              ).then((_) {
+                fetchProducts(page: currentPage);
+              });
+            },
+            child: Container(
+              margin: EdgeInsets.only(bottom: isWeb ? 20.0 : 15.0),
+              padding: EdgeInsets.all(isWeb ? 16.0 : 12.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 2,
+                    blurRadius: 5,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  CachedNetworkImage(
+                    imageUrl: ApiConfig.changePathImage(product.picture),
+                    width: isWeb ? 120 : 100,
+                    height: isWeb ? 120 : 100,
+                    fit: BoxFit.cover,
+                    progressIndicatorBuilder: (context, url, progress) => Center(
+                      child: CircularProgressIndicator(
+                        value: progress.progress,
+                        color: const Color(0xFFFB8C00),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => const Icon(Icons.error),
+                    imageBuilder: (context, imageProvider) => ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: Image(
+                        image: imageProvider,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
-                  errorWidget: (context, url, error) => const Icon(Icons.error),
-                  imageBuilder: (context, imageProvider) => ClipRRect(
-                    borderRadius: BorderRadius.circular(15),
-                    child: Image(
-                      image: imageProvider,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              product.name,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: kIsWeb ? 20 : 18,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          PopupMenuButton<String>(   
-                            icon: const Icon(
-                              Icons.more_vert,
-                              color: Color(0xFF4B5563),
-                            ),
-                            itemBuilder: (BuildContext context) => [
-                              PopupMenuItem(
-                                value: 'edit',
-                                child: ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  leading: const Icon(Icons.edit_square, color: Color(0xFF4B5563)),
-                                  title: Text(AppLocalizations.of(context)!.edit),
+                  SizedBox(width: isWeb ? 24 : 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                product.name,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: isWeb ? 22 : 18,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              PopupMenuItem(
-                                value: 'delete',
-                                child: ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  leading: const Icon(Icons.delete, color: Color(0xFF4B5563)),
-                                  title: Text(AppLocalizations.of(context)!.delete),
-                                ),
+                            ),
+                            PopupMenuButton<String>(
+                              icon: const Icon(
+                                Icons.more_vert,
+                                color: Color(0xFF4B5563),
                               ),
-                            
-                            ],
-                            onSelected: (value) async {
-                              if (value == 'edit') {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => UpdateProductPage(product: product),
+                              itemBuilder: (BuildContext context) => [
+                                PopupMenuItem(
+                                  value: 'edit',
+                                  child: ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: const Icon(Icons.edit_square, color: Color(0xFF4B5563)),
+                                    title: Text(AppLocalizations.of(context)!.edit),
                                   ),
-                                );
-                                fetchProducts();
-                              } else if (value == 'delete') {
-                                _showDeleteConfirmationDialog(product);
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                      Text(
-                        "${AppLocalizations.of(context)!.productPrice}: ${product.price.toStringAsFixed(2)} DT",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Color(0xFFFB8C00),
-                        ),
-                      ),
-                      Text(
-                        "${AppLocalizations.of(context)!.productwholesale_price}: ${product.wholesalePrice.toStringAsFixed(2)} DT",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Color(0xFFFB8C00),
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Icon(
-                            product.type == 'Salty' ? Icons.local_pizza : Icons.cookie,
-                            color: Colors.grey,
-                          ),
-                          Text(
-                            product.type == 'Salty'
-                                ? AppLocalizations.of(context)!.salty
-                                : AppLocalizations.of(context)!.sweet,
-                            style: const TextStyle(
-                              color: Colors.grey,
+                                ),
+                                PopupMenuItem(
+                                  value: 'delete',
+                                  child: ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: const Icon(Icons.delete, color: Color(0xFF4B5563)),
+                                    title: Text(AppLocalizations.of(context)!.delete),
+                                  ),
+                                ),
+                              ],
+                              onSelected: (value) async {
+                                if (value == 'edit') {
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => UpdateProductPage(product: product),
+                                    ),
+                                  );
+                                  fetchProducts();
+                                } else if (value == 'delete') {
+                                  _showDeleteConfirmationDialog(product);
+                                }
+                              },
                             ),
+                          ],
+                        ),
+                        Text(
+                          "${AppLocalizations.of(context)!.productPrice}: ${product.price.toStringAsFixed(3)} ${AppLocalizations.of(context)!.dt}",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: isWeb ? 18 : 16,
+                            color: const Color(0xFFFB8C00),
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                        Text(
+                          "${AppLocalizations.of(context)!.productwholesale_price}: ${product.wholesalePrice.toStringAsFixed(3)} ${AppLocalizations.of(context)!.dt}",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: isWeb ? 18 : 16,
+                            color: const Color(0xFFFB8C00),
+                          ),
+                        ),
+                        Text(
+                          "${AppLocalizations.of(context)!.cost}: ${double.parse(product.cost).toStringAsFixed(3)} ${AppLocalizations.of(context)!.dt}",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: isWeb ? 18 : 16,
+                            color: const Color(0xFFFB8C00),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Icon(
+                              product.type == 'Salty' ? Icons.local_pizza : Icons.cookie,
+                              color: Colors.grey,
+                              size: isWeb ? 20 : 18,
+                            ),
+                            Text(
+                              product.type == 'Salty'
+                                  ? AppLocalizations.of(context)!.salty
+                                  : AppLocalizations.of(context)!.sweet,
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: isWeb ? 14 : 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },

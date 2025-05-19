@@ -1,15 +1,19 @@
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Paginated/PaginatedPrimaryMaterialResponse.dart';
 import 'package:flutter_application/classes/PrimaryMaterial.dart';
-import 'package:flutter_application/classes/ScrollingText.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_employees.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
+import 'package:flutter_application/custom_widgets/NotificationIcon.dart';
 import 'package:flutter_application/custom_widgets/UpdateStoke.dart';
 import 'package:flutter_application/services/Bakery/bakery_service.dart';
 import 'package:flutter_application/services/emloyees/primary_materials.dart';
 import 'package:flutter_application/view/manager/primary_material/AddPrimary_materialPage.dart';
+import 'package:flutter_application/view/manager/primary_material/PrimaryMaterialDetailsPage.dart';
+import 'package:flutter_application/view/manager/primary_material/ShowModelCommandeFournisseurs.dart';
 import 'package:flutter_application/view/manager/primary_material/UpdatePrimary_materialPage.dart';
 import 'package:flutter_application/view/manager/primary_material/return_de_stock.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -28,21 +32,22 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
   List<PrimaryMaterial> primaryMaterials = [];
   int total = 0;
   bool isLoading = false;
-  String role = 'manager'; // Default role, change as needed
+  String role = 'manager';
   final TextEditingController _searchController = TextEditingController();
 
   Future<void> fetchPrimaryMaterial({int page = 1}) async {
     if (!mounted) return;
-    setState(() => isLoading = true);
-
     try {
+      setState(() => isLoading = true);
+
       PaginatedPrimaryMaterialResponse? response =
           await EmployeesPrimaryMaterialService().searchPrimaryMaterial(
         context,
         1,
-        query: _searchController.text.trim(),
+        query: _searchController.text.trim().isNotEmpty
+            ? _searchController.text.trim()
+            : null,
       );
-
       if (response != null && mounted) {
         setState(() {
           primaryMaterials = response.data;
@@ -61,10 +66,10 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
     } catch (e) {
       if (mounted) {
         setState(() => isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching data: $e')),
+        );
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching data: $e')),
-      );
     }
   }
 
@@ -85,20 +90,29 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
     super.dispose();
   }
 
+  Future<bool> _onBackPressed() async {
+    return true; // Allow navigation back by default
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isWebLayout = MediaQuery.of(context).size.width >= 600;
     return Scaffold(
-      backgroundColor: const Color(0xFFE5E7EB),
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(
           AppLocalizations.of(context)!.stockManagement,
           style: const TextStyle(
-              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFB8C00),
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.compare_arrows, color: Colors.black),
+            icon: const Icon(Icons.compare_arrows, color: Colors.white),
             onPressed: () async {
               await Navigator.push(
                 context,
@@ -109,6 +123,8 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
               fetchPrimaryMaterial();
             },
           ),
+          if( role == 'manager')
+          const NotificationIcon(),
           const SizedBox(width: 8),
         ],
       ),
@@ -128,23 +144,63 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
         },
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: isWebLayout ? buildFromWeb(context) : buildFromMobile(context),
+    );
+  }
+
+  Widget buildFromMobile(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: SingleChildScrollView(
         child: Column(
           children: [
-            _buildContprimaryMaterials(),
-            const SizedBox(height: 20),
-            _buildInput(),
-            const SizedBox(height: 20),
-            Expanded(child: _buildListprimaryMaterials()),
+            const SizedBox(height: 16),
+            _buildContprimaryMaterials(isWeb: false),
+            const SizedBox(height: 16),
+            _buildInput(isWeb: false),
+            const SizedBox(height: 16),
+            _buildListprimaryMaterials(isWeb: false),
+            const SizedBox(height: 16),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildContprimaryMaterials() {
+  Widget buildFromWeb(BuildContext context) {
     return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            const SizedBox(height: 24),
+            _buildContprimaryMaterials(isWeb: true),
+            const SizedBox(height: 24),
+            _buildInput(isWeb: true),
+            const SizedBox(height: 24),
+            _buildListprimaryMaterials(isWeb: true),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContprimaryMaterials({required bool isWeb}) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -162,17 +218,17 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
         children: [
           Text(
             AppLocalizations.of(context)!.totalPrimaryMaterial,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.grey,
-              fontSize: 16,
+              fontSize: isWeb ? 18 : 16,
               fontWeight: FontWeight.bold,
             ),
           ),
           Text(
             total.toString(),
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.black,
-              fontSize: 24,
+              fontSize: isWeb ? 26 : 24,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -181,57 +237,212 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
     );
   }
 
-  Widget _buildInput() {
-    return TextField(
-      controller: _searchController,
-      decoration: InputDecoration(
-        hintText: AppLocalizations.of(context)!.searchByName,
-        prefixIcon: const Icon(Icons.search),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        filled: true,
-        fillColor: Colors.white,
+  Widget _buildInput({required bool isWeb}) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+          ),
+        ],
       ),
-      onChanged: (value) => fetchPrimaryMaterial(),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: AppLocalizations.of(context)!.searchByName,
+          prefixIcon: const Icon(Icons.search),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        onChanged: (value) => fetchPrimaryMaterial(),
+        style: TextStyle(fontSize: isWeb ? 16 : 14),
+      ),
     );
   }
 
-  Widget _buildListprimaryMaterials() {
+  Widget _buildListprimaryMaterials({required bool isWeb}) {
     if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFB8C00)),
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+            ),
+          ],
         ),
-      );
-    }
-
-    if (primaryMaterials.isEmpty) {
-      return Center(
-        child: Text(
-          AppLocalizations.of(context)!.noPrimaryMaterialsFound,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey,
+        child: const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFB8C00)),
           ),
         ),
       );
     }
 
-    return ListView.builder(
-      itemCount: primaryMaterials.length,
-      itemBuilder: (context, index) {
-        final material = primaryMaterials[index];
-        return _buildMaterialItem(material);
-      },
+    if (primaryMaterials.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            AppLocalizations.of(context)!.noPrimaryMaterialsFound,
+            style: TextStyle(
+              fontSize: isWeb ? 20 : 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+        ),
+      );
+    }
+
+    List<Widget> warningRows = [];
+    for (var material in primaryMaterials) {
+      if (material.reelQuantity < material.minQuantity) {
+        warningRows.add(
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.warning, color: Colors.red, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${AppLocalizations.of(context)!.lowStock}: ${material.name} (${material.reelQuantity} ${material.unit} ${AppLocalizations.of(context)!.remaining})',
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.list_alt, color: Colors.grey),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ShowModelCommandeFournisseurs(
+                          material: material,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      } else if (material.reelQuantity > material.minQuantity &&
+                 material.reelQuantity < material.maxQuantity) {
+        warningRows.add(
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.yellow.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.warning, color: Colors.brown, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${AppLocalizations.of(context)!.moderateStock}: ${material.name} (${material.reelQuantity} ${material.unit} ${AppLocalizations.of(context)!.remaining})',
+                    style: const TextStyle(
+                      color: Colors.brown,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.list_alt, color: Colors.grey),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ShowModelCommandeFournisseurs(
+                          material: material,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+
+    return Column(
+      children: [
+        if (warningRows.isNotEmpty) ...[
+          ...warningRows,
+          const SizedBox(height: 16),
+        ],
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: primaryMaterials.length,
+          itemBuilder: (context, index) {
+            final material = primaryMaterials[index];
+            return _buildMaterialItem(material, isWeb: isWeb);
+          },
+        ),
+      ],
     );
   }
 
-  Widget _buildMaterialItem(PrimaryMaterial material) {
+  Widget _buildMaterialItem(PrimaryMaterial material, {required bool isWeb}) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 15),
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -248,8 +459,8 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
         children: [
           CachedNetworkImage(
             imageUrl: ApiConfig.changePathImage(material.image),
-            width: 100,
-            height: 100,
+            width: isWeb ? 120 : 100,
+            height: isWeb ? 120 : 100,
             fit: BoxFit.cover,
             progressIndicatorBuilder: (context, url, progress) => Center(
               child: CircularProgressIndicator(
@@ -271,24 +482,28 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if(material.name.length > 9 && !kIsWeb)
-                ScrollingWidgetList(
-                  children:[ Text(
+                if (material.name.length > 9 && !kIsWeb)
+                  Text(
                     material.name.toUpperCase(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: isWeb ? 16 : 14,
                     ),
                   ),
-                  SizedBox(width: 10),
-                  ],
-                ),
-                if(material.name.length < 9 || kIsWeb)
+                if (material.name.length < 9 || kIsWeb)
+                  Text(
+                    material.name.toUpperCase(),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: isWeb ? 16 : 14,
+                    ),
+                  ),
                 Text(
-                  material.name.toUpperCase(),
+                  '${AppLocalizations.of(context)!.cost}:  ${double.parse(material.cost).toStringAsFixed(3)} ${AppLocalizations.of(context)!.dt}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 16,
+                    color: Color(0xFFFB8C00),
                   ),
                 ),
                 Text(
@@ -312,6 +527,17 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
             children: [
               Row(children: [
                 IconButton(
+                  icon: const Icon(Icons.data_exploration_outlined),
+                  onPressed: () async => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PrimaryMaterialDetailsPage(
+                        material: material,
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
                   icon: const Icon(Icons.edit_square),
                   onPressed: () async => await _editMaterial(material),
                 ),
@@ -321,8 +547,7 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
                     showUpdateStokeConfirmationDialog(
                       material,
                       context,
-                      onUpdate:
-                          fetchPrimaryMaterial, // Pass callback to refresh list
+                      onUpdate: fetchPrimaryMaterial,
                     );
                   },
                 ),
@@ -331,7 +556,7 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
                   onPressed: () => _showDeleteConfirmationDialog(material),
                 ),
               ]),
-              _buildQuantityIndicator(material),
+              _buildQuantityIndicator(material, isWeb: isWeb),
             ],
           )
         ],
@@ -339,7 +564,7 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
     );
   }
 
-  Widget _buildQuantityIndicator(PrimaryMaterial material) {
+  Widget _buildQuantityIndicator(PrimaryMaterial material, {required bool isWeb}) {
     final double reelQuantity = material.reelQuantity.toDouble();
     final double maxQuantity =
         (material.maxQuantity > 0) ? material.maxQuantity.toDouble() : 1.0;
@@ -361,7 +586,7 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
     }
 
     return SizedBox(
-      width: 100,
+      width: isWeb ? 120 : 100,
       child: Center(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -383,7 +608,7 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
               ),
             const SizedBox(height: 5),
             SizedBox(
-              width: 70,
+              width: isWeb ? 80 : 70,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(30),
                 child: LinearProgressIndicator(
@@ -410,76 +635,75 @@ class _GestionDeStokeState extends State<GestionDeStoke> {
     fetchPrimaryMaterial();
   }
 
-void _showDeleteConfirmationDialog(PrimaryMaterial material) {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(
-        AppLocalizations.of(context)!.confirmation,
-        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-        textAlign: TextAlign.center,
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: '${AppLocalizations.of(context)!.deleteConfirmation} ',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                TextSpan(
-                  text: material.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
+  void _showDeleteConfirmationDialog(PrimaryMaterial material) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          AppLocalizations.of(context)!.confirmation,
+          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '${AppLocalizations.of(context)!.deleteConfirmation} ',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                ),
-              ],
+                  TextSpan(
+                    text: material.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+              textAlign: TextAlign.center,
+              softWrap: true,
             ),
-            textAlign: TextAlign.center,
-            softWrap: true,
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text(
+              AppLocalizations.of(context)!.cancel,
+              style: const TextStyle(color: Colors.black),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+            ),
+            onPressed: () async {
+              await EmployeesPrimaryMaterialService()
+                  .deletePrimaryMaterial(material.id, context);
+              fetchPrimaryMaterial();
+              setState(() {
+                primaryMaterials.remove(material);
+              });
+              Navigator.of(context).pop();
+            },
+            child: Text(
+              AppLocalizations.of(context)!.delete,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: Text(
-            AppLocalizations.of(context)!.cancel,
-            style: const TextStyle(color: Colors.black),
-          ),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10.0),
-            ),
-          ),
-          onPressed: () async {
-            await EmployeesPrimaryMaterialService()
-                .deletePrimaryMaterial(material.id, context);
-            fetchPrimaryMaterial();
-            setState(() {
-              primaryMaterials.remove(material);
-            });
-            Navigator.of(context).pop();
-          },
-          child: Text(
-            AppLocalizations.of(context)!.delete,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
+    );
+  }
 }

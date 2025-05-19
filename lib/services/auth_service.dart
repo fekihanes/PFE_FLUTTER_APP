@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/services/background_service.dart';
 import 'package:flutter_application/services/websocket/Background_notification_service.dart';
+
 import 'package:flutter_application/services/websocket/websocket_client.dart';
 import 'package:flutter_application/view/Login_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -74,7 +75,7 @@ class AuthService {
       await prefs.setString('email', userData['email'] ?? '');
       await prefs.setString('name', userData['name'] ?? '');
       await prefs.setString('role', userData['role'] ?? '');
-      await prefs.setString('bakery_id', userData['bakery_id'].toString() ?? '');
+      await prefs.setString('bakery_id', userData['bakery_id'].toString());
       await prefs.setString('selected_price', userData['selected_price'] ?? 'details');
       await prefs.setString(
           'my_bakery', userData['bakery']?['id']?.toString() ?? '');
@@ -279,6 +280,7 @@ class AuthService {
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
+          'Content-Type': 'application/json',
         },
       );
 
@@ -293,7 +295,7 @@ class AuthService {
         await prefs.setString('email', userData['email'] ?? '');
         await prefs.setString('name', userData['name'] ?? '');
         await prefs.setString('role', userData['role'] ?? '');
-        await prefs.setString('bakery_id', userData['bakery_id'].toString() ?? '');
+        await prefs.setString('bakery_id', userData['bakery_id'].toString());
         await prefs.setString(
             'my_bakery', userData['bakery']?['id']?.toString() ?? '');
         return {'success': true, 'data': userData};
@@ -367,8 +369,14 @@ class AuthService {
   Future<void> _initializeServices() async {
     print('📱 Initializing WebSocket for mobile platform');
     await WebsocketService.connect();
+  await BackgroundNotificationService.initialize();
+  await BackgroundService.initialize();
+  await WebsocketService.connect();
+  await _requestForegroundServicePermission();
     await _requestForegroundServicePermission();
   }
+
+
 
   Future<void> _requestForegroundServicePermission() async {
     if (Platform.isAndroid) {

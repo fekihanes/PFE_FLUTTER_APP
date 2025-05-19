@@ -3,9 +3,7 @@ import 'package:flutter_application/custom_widgets/LanguageSelector.dart';
 import 'package:flutter_application/custom_widgets/UserProfileImageState.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/view/Login_page.dart';
-import 'package:flutter_application/view/employees/Boulanger/CommandeOneByOnePage.dart';
-import 'package:flutter_application/view/employees/Boulanger/MelangeListPage.dart'; // Added
-import 'package:flutter_application/view/employees/Boulanger/SelectMaterialsPage.dart';
+import 'package:flutter_application/view/employees/Boulanger/CommandeMelangePage.dart';
 import 'package:flutter_application/view/manager/primary_material/gestion_de_stock.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -51,17 +49,7 @@ class _CustomDrawerEmployeesState extends State<CustomDrawerEmployees> {
           Expanded(
             child: ListView(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.dashboard, color: Color(0xFFFB8C00)),
-                  title: Text(AppLocalizations.of(context)!.dashboard),
-                  onTap: () {
-                    // Navigator.pushReplacement(
-                    //   context,
-                    //   MaterialPageRoute(
-                    //       builder: (context) => const ()),
-                    // );
-                  },
-                ),
+            
                 ListTile(
                   leading: const Icon(Icons.store, color: Color(0xFFFB8C00)),
                   title: Text(AppLocalizations.of(context)!.bakeryManagement),
@@ -69,7 +57,7 @@ class _CustomDrawerEmployeesState extends State<CustomDrawerEmployees> {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const CommandeOneByOnePage()),
+                          builder: (context) => const CommandeMelangePage()),
                     );
                   },
                 ),
@@ -82,29 +70,6 @@ class _CustomDrawerEmployeesState extends State<CustomDrawerEmployees> {
                       MaterialPageRoute(
                           builder: (context) => const GestionDeStoke()),
                     );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.list_alt, color: Color(0xFFFB8C00)),
-                  title: Text(AppLocalizations.of(context)?.melangeList ?? 'Liste des Mélanges'),
-                  onTap: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const MelangeListPage()),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.restore_page_outlined, color: Color(0xFFFB8C00)),
-                  title: Text(AppLocalizations.of(context)!.selectMaterials),
-                  onTap: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const SelectMaterialsPage()),
-                    );
-                    _loadUserData(); // Recharger les données après édition
                   },
                 ),
                 

@@ -292,7 +292,7 @@ class ManagementEmployeesService {
         return null;
       }
 
-      String? idBakery = prefs.getString('my_bakery') ?? prefs.getString('bakery_id');
+      String? idBakery = prefs.getString('my_bakery')==''?prefs.getString('bakery_id'):prefs.getString('my_bakery');
       if (idBakery == null) {
         Customsnackbar().showErrorSnackbar(context, 'Bakery ID not found');
         return null;

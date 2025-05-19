@@ -3,6 +3,7 @@ import 'package:flutter_application/custom_widgets/LanguageSelector.dart';
 import 'package:flutter_application/custom_widgets/UserProfileImageState.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/view/Login_page.dart';
+import 'package:flutter_application/view/user/MyOrdersPage.dart';
 import 'package:flutter_application/view/user/page_find_bahery.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -54,6 +55,18 @@ class _CustomDraweruserState extends State<CustomDraweruser> {
                       context,
                       MaterialPageRoute(
                           builder: (context) => const PageFindBahery()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading:
+                      Icon(Icons.list, color: const Color(0xFFFB8C00)),
+                  title: Text(AppLocalizations.of(context)!.myOrders),
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const MyOrdersPage()),
                     );
                   },
                 ),

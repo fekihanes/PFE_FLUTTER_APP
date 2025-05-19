@@ -5,8 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Bakery.dart';
 import 'package:flutter_application/classes/Product.dart';
-import 'package:flutter_application/classes/ScrollingText.dart';
+import 'package:flutter_application/custom_widgets/CustomDrawer_caissier.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
+import 'package:flutter_application/custom_widgets/NotificationIcon.dart';
 import 'package:flutter_application/custom_widgets/customSnackbar.dart';
 import 'package:flutter_application/services/Bakery/bakery_service.dart';
 import 'package:flutter_application/services/emloyees/InvoiceService.dart';
@@ -15,6 +16,7 @@ import 'package:flutter_application/services/users/bakeries_service.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AccueilBakery extends StatefulWidget {
   final Map<Product, int> products_selected;
@@ -40,6 +42,8 @@ class _AccueilBakeryState extends State<AccueilBakery> {
   String type = "all";
   String? bakeryId = "0";
   late Map<Product, int> _productsSelected;
+  String role = "";
+  final Map<Product, TextEditingController> _quantityControllers = {};
 
   @override
   void initState() {
@@ -53,6 +57,7 @@ class _AccueilBakeryState extends State<AccueilBakery> {
     setState(() => isBigLoading = true);
     try {
       final prefs = await SharedPreferences.getInstance();
+      role = prefs.getString('role') ?? '';
       bakeryId = prefs.getString('role') == 'manager'
           ? prefs.getString('my_bakery')
           : prefs.getString('bakery_id');
@@ -123,7 +128,7 @@ class _AccueilBakeryState extends State<AccueilBakery> {
     setState(() => isLoading = true);
     try {
       final now = DateTime.now();
-      await CommandeService().commandes_store_cash_pickup(
+      int res = await CommandeService().commandes_store_cash_pickup(
         context,
         bakeryId: bakery!.id,
         productsSelected: _productsSelected,
@@ -138,7 +143,9 @@ class _AccueilBakeryState extends State<AccueilBakery> {
         secondaryPhone: null,
         descriptionCommande: null,
       );
-      _showInvoiceModal();
+      if (res == 1) {
+        _showInvoiceModal();
+      }
     } catch (e) {
       if (context.mounted) {
         Customsnackbar().showErrorSnackbar(
@@ -150,6 +157,7 @@ class _AccueilBakeryState extends State<AccueilBakery> {
   }
 
   void _showInvoiceModal() {
+    bool printed = false;
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -159,38 +167,68 @@ class _AccueilBakeryState extends State<AccueilBakery> {
           actions: [
             TextButton(
               onPressed: () async {
-                final invoice = await _invoiceService.generateInvoice(
-                  context: context,
-                  bakeryId: bakeryId!,
-                  documentType: 'ticket',
-                  user_id: null,
-                  commande_id: null,
-                  products: _productsSelected.entries
-                      .map((entry) => {
-                            'article_id': entry.key.id,
-                            'quantity': entry.value,
-                            'price': entry.key.price,
-                          })
-                      .toList(),
-                );
-
-                await _invoiceService.printInvoice(
-                    context: context, invoiceId: invoice?['invoice_id']);
                 setState(() {
-                  _productsSelected.clear();
+                  printed = true;
                 });
-                await fetchProducts(page: currentPage);
-                Navigator.of(context).pop();
+                try {
+                  final invoice = await _invoiceService.generateInvoice(
+                    context: context,
+                    bakeryId: bakeryId!,
+                    documentType: 'ticket',
+                    user_id: null,
+                    commande_id: null,
+                    products: _productsSelected.entries
+                        .map((entry) => {
+                              'article_id': entry.key.id,
+                              'quantity': entry.value,
+                              'price': entry.key.price,
+                            })
+                        .toList(),
+                  );
+
+                  if (invoice != null && invoice['invoice_id'] != null) {
+                    await _invoiceService.printInvoice(
+                      context: context,
+                      invoiceId: invoice['invoice_id'],
+                    );
+                    setState(() {
+                      _productsSelected.clear();
+                      _quantityControllers.clear();
+                      printed = false;
+                      fetchProducts(page: currentPage);
+                    });
+                    if (context.mounted) {
+                      Customsnackbar().showSuccessSnackbar(
+                          context, AppLocalizations.of(context)!.invoicePrinted);
+                      Navigator.of(context).pop();
+                    }
+                  } else {
+                    throw Exception('Failed to generate invoice');
+                  }
+                } catch (e) {
+                  setState(() {
+                    printed = false;
+                  });
+                  if (context.mounted) {
+                    Customsnackbar().showErrorSnackbar(context,
+                        '${AppLocalizations.of(context)!.errorPrintingInvoice}: $e');
+                  }
+                }
               },
-              child: Text(AppLocalizations.of(context)!.print),
+              child: printed
+                  ? const CircularProgressIndicator(
+                      color: Color(0xFFFB8C00),
+                    )
+                  : Text(AppLocalizations.of(context)!.print),
             ),
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
                 setState(() {
                   _productsSelected.clear();
+                  _quantityControllers.clear();
+                  fetchProducts(page: currentPage);
                 });
-                fetchProducts(page: currentPage);
+                Navigator.of(context).pop();
               },
               child: Text(AppLocalizations.of(context)!.cancel),
             ),
@@ -200,66 +238,237 @@ class _AccueilBakeryState extends State<AccueilBakery> {
     );
   }
 
+  Future<bool> _onBackPressed() async {
+    return true;
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
+    _quantityControllers.forEach((_, controller) => controller.dispose());
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    bool isWebLayout = MediaQuery.of(context).size.width >= 600;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
           bakery != null
               ? bakery!.name.toUpperCase()
               : AppLocalizations.of(context)!.loadingMessage,
-          style: const TextStyle(
-              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
+          style: GoogleFonts.montserrat(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: MediaQuery.of(context).size.width < 600 ? 20 : 24,
+          ),
         ),
-        backgroundColor: Colors.white,
+        actions: const [
+          NotificationIcon(),
+        ],
+        backgroundColor: const Color(0xFFFB8C00),
+        elevation: 0,
+        leading: role.isEmpty
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => _onBackPressed().then((canPop) {
+                  if (canPop) Navigator.pop(context);
+                }),
+              )
+            : null,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      backgroundColor: const Color(0xFFE5E7EB),
-      drawer: const CustomDrawerManager(),
+      backgroundColor: Colors.white,
+      drawer: role == 'manager'
+          ? const CustomDrawerManager()
+          : role.isNotEmpty
+              ? CustomDrawerCaissier()
+              : null,
       body: isBigLoading
           ? Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const CircularProgressIndicator(color: Color(0xFFFB8C00)),
+                  const CircularProgressIndicator(
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Color(0xFFFB8C00))),
                   const SizedBox(height: 20),
-                  Text(AppLocalizations.of(context)!.loadingMessage),
+                  Text(AppLocalizations.of(context)!.loadingMessage,
+                      style: GoogleFonts.montserrat(fontSize: 16)),
                 ],
               ),
             )
           : LayoutBuilder(
               builder: (context, constraints) {
-                return Container(
-                  color: const Color(0xFFE5E7EB),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(32),
-                          child: Column(
-                            children: [
-                              _buildContProducts(),
-                              SizedBox(height: constraints.maxHeight * 0.015),
-                              _buildFormSearch(),
-                              SizedBox(height: constraints.maxHeight * 0.015),
-                              _buildProductList(constraints),
-                              SizedBox(height: constraints.maxHeight * 0.015),
-                              _buildCart(constraints),
-                            ],
-                          ),
-                        ),
-                      ),
-                      _buildPagination(),
-                    ],
-                  ),
-                );
+                return isWebLayout
+                    ? buildFromWeb(context, constraints)
+                    : buildFromMobile(context, constraints);
               },
             ),
+    );
+  }
+
+  Widget buildFromMobile(BuildContext context, BoxConstraints constraints) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              margin: EdgeInsets.all(constraints.maxWidth * 0.04),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: const LinearGradient(
+                    colors: [Colors.white, Color(0xFFFFF3E0)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: _buildContProducts(),
+              ),
+            ),
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              margin:
+                  EdgeInsets.symmetric(horizontal: constraints.maxWidth * 0.04),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                ),
+                child: _buildFormSearch(),
+              ),
+            ),
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              margin: EdgeInsets.all(constraints.maxWidth * 0.04),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                ),
+                child: _buildProductList(constraints),
+              ),
+            ),
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              margin: EdgeInsets.all(constraints.maxWidth * 0.04),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                ),
+                child: _buildCart(constraints),
+              ),
+            ),
+            Center(child: _buildPagination()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildFromWeb(BuildContext context, BoxConstraints constraints) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  Card(
+                    elevation: 6,
+                    shape:
+                        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    margin: EdgeInsets.all(constraints.maxWidth * 0.02),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: const LinearGradient(
+                          colors: [Colors.white, Color(0xFFFFF3E0)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: _buildContProducts(),
+                    ),
+                  ),
+                  Card(
+                    elevation: 6,
+                    shape:
+                        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    margin:
+                        EdgeInsets.symmetric(horizontal: constraints.maxWidth * 0.02),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.white,
+                      ),
+                      child: _buildFormSearch(),
+                    ),
+                  ),
+                  SizedBox(height: constraints.maxHeight * 0.02),
+                  Card(
+                    elevation: 6,
+                    shape:
+                        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    margin:
+                        EdgeInsets.symmetric(horizontal: constraints.maxWidth * 0.02),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.white,
+                      ),
+                      child: _buildProductList(constraints),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: SingleChildScrollView(
+              child: Card(
+                elevation: 6,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                margin: EdgeInsets.all(constraints.maxWidth * 0.02),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white,
+                  ),
+                  child: _buildCart(constraints),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -277,7 +486,7 @@ class _AccueilBakeryState extends State<AccueilBakery> {
         heightFactor: 20,
         child: Text(
           AppLocalizations.of(context)!.noProductFound,
-          style: TextStyle(
+          style: GoogleFonts.montserrat(
             fontSize: constraints.maxWidth < 600 ? 16 : 18,
             fontWeight: FontWeight.bold,
             color: Colors.grey,
@@ -289,29 +498,27 @@ class _AccueilBakeryState extends State<AccueilBakery> {
     int crossAxisCount;
     double childAspectRatio;
 
-    if (constraints.maxWidth < 600) {
+    if (constraints.maxWidth < 400) {
       crossAxisCount = 1;
-      childAspectRatio =
-          (constraints.maxWidth / 1) / (constraints.maxHeight * 0.4);
+      childAspectRatio = 1.5;
+    } else if (constraints.maxWidth < 600) {
+      crossAxisCount = 2;
+      childAspectRatio = 1.2;
     } else if (constraints.maxWidth < 900) {
       crossAxisCount = 3;
-      childAspectRatio =
-          (constraints.maxWidth / 2) / (constraints.maxHeight * 0.63);
+      childAspectRatio = 1.0;
     } else if (constraints.maxWidth < 1200) {
-      crossAxisCount = 4;
-      childAspectRatio =
-          (constraints.maxWidth / 3) / (constraints.maxHeight * 0.55);
+      crossAxisCount = 3;
+      childAspectRatio = 0.9;
     } else {
-      crossAxisCount = 5;
-      childAspectRatio =
-          (constraints.maxWidth / 4) / (constraints.maxHeight * 0.55);
+      crossAxisCount = 4;
+      childAspectRatio = 0.8;
     }
-
-    childAspectRatio = childAspectRatio.clamp(0.5, 1.5);
 
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.all(constraints.maxWidth * 0.03),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: constraints.maxWidth * 0.02,
@@ -320,21 +527,21 @@ class _AccueilBakeryState extends State<AccueilBakery> {
       ),
       itemCount: products.length,
       itemBuilder: (context, index) {
-        return Container(
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            borderRadius: BorderRadius.circular(10),
-            color: Colors.white,
-          ),
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _productsSelected.update(products[index], (value) => value + 1,
-                    ifAbsent: () => 1);
-              });
-            },
-            child: _showInfoProduct(products[index], constraints),
+        return Card(
+          elevation: 3,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: ClipRect(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _productsSelected.update(products[index], (value) => value + 1,
+                      ifAbsent: () => 1);
+                  _quantityControllers[products[index]] ??=
+                      TextEditingController(text: _productsSelected[products[index]].toString());
+                });
+              },
+              child: _showInfoProduct(products[index], constraints),
+            ),
           ),
         );
       },
@@ -342,53 +549,52 @@ class _AccueilBakeryState extends State<AccueilBakery> {
   }
 
   Widget _showInfoProduct(Product product, BoxConstraints constraints) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        CachedNetworkImage(
-          imageUrl: ApiConfig.changePathImage(product.picture),
-          width: double.infinity,
-          height: constraints.maxHeight * 0.2,
-          fit: BoxFit.cover,
-          progressIndicatorBuilder: (context, url, progress) => Center(
-            child: CircularProgressIndicator(
-              value: progress.progress,
-              color: const Color(0xFFFB8C00),
+    return Padding(
+      padding: EdgeInsets.all(constraints.maxWidth * 0.02),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: CachedNetworkImage(
+              imageUrl: ApiConfig.changePathImage(product.picture),
+              width: double.infinity,
+              fit: BoxFit.cover,
+              progressIndicatorBuilder: (context, url, progress) => Center(
+                child: CircularProgressIndicator(
+                  value: progress.progress,
+                  color: const Color(0xFFFB8C00),
+                ),
+              ),
+              errorWidget: (context, url, error) => Container(
+                color: Colors.grey[200],
+                child: const Icon(Icons.store, size: 40),
+              ),
+              imageBuilder: (context, imageProvider) => ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image(image: imageProvider, fit: BoxFit.cover),
+              ),
             ),
           ),
-          errorWidget: (context, url, error) => Container(
-            color: Colors.grey[200],
-            child: const Icon(Icons.store, size: 40),
-          ),
-          imageBuilder: (context, imageProvider) => ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image(image: imageProvider, fit: BoxFit.cover),
-          ),
-        ),
-        SizedBox(height: constraints.maxHeight * 0.01),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 0, 0),
-          child: Text(
+          SizedBox(height: constraints.maxHeight * 0.01),
+          Text(
             product.name.toUpperCase(),
-            style: TextStyle(
-              fontSize: constraints.maxWidth < 600 ? 16 : 20,
+            style: GoogleFonts.montserrat(
+              fontSize: constraints.maxWidth < 600 ? 14 : 16,
               fontWeight: FontWeight.bold,
               color: Colors.black,
             ),
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 0, 0),
-          child: Row(
+          SizedBox(height: constraints.maxHeight * 0.005),
+          Row(
             children: [
               Expanded(
                 child: Text(
                   "${product.price} ${AppLocalizations.of(context)!.dt}",
-                  style: TextStyle(
+                  style: GoogleFonts.montserrat(
                     fontWeight: FontWeight.bold,
-                    fontSize: constraints.maxWidth < 600 ? 16 : 20,
+                    fontSize: constraints.maxWidth < 600 ? 12 : 14,
                     color: const Color(0xFFFB8C00),
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -398,9 +604,9 @@ class _AccueilBakeryState extends State<AccueilBakery> {
               const Spacer(),
               Text(
                 product.reelQuantity.toString(),
-                style: TextStyle(
+                style: GoogleFonts.montserrat(
                   fontWeight: FontWeight.bold,
-                  fontSize: constraints.maxWidth < 600 ? 16 : 20,
+                  fontSize: constraints.maxWidth < 600 ? 12 : 14,
                   color: Colors.black,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -408,40 +614,27 @@ class _AccueilBakeryState extends State<AccueilBakery> {
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildCart(BoxConstraints constraints) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          children: [
-            Text(
-              AppLocalizations.of(context)!.order_in_progress,
-              style: TextStyle(
-                fontSize: constraints.maxWidth < 600 ? 16 : 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
+      padding: EdgeInsets.all(constraints.maxWidth * 0.03),
+      child: Column(
+        children: [
+          Text(
+            AppLocalizations.of(context)!.order_in_progress,
+            style: GoogleFonts.montserrat(
+              fontSize: constraints.maxWidth < 600 ? 18 : 22,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFFFB8C00),
             ),
-            SizedBox(height: constraints.maxHeight * 0.015),
-            _buildContCart(constraints),
-          ],
-        ),
+          ),
+          SizedBox(height: constraints.maxHeight * 0.015),
+          _buildContCart(constraints),
+        ],
       ),
     );
   }
@@ -451,7 +644,7 @@ class _AccueilBakeryState extends State<AccueilBakery> {
       return Center(
         child: Text(
           AppLocalizations.of(context)!.emptyCart,
-          style: TextStyle(
+          style: GoogleFonts.montserrat(
             fontSize: constraints.maxWidth < 600 ? 16 : 18,
             color: Colors.grey,
           ),
@@ -470,37 +663,46 @@ class _AccueilBakeryState extends State<AccueilBakery> {
           itemCount: _productsSelected.length,
           itemBuilder: (context, index) {
             final entry = _productsSelected.entries.elementAt(index);
-            return _buildCartItem(entry.key, entry.value, constraints);
+            return Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: EdgeInsets.symmetric(vertical: constraints.maxWidth * 0.01),
+              child: _buildCartItem(entry.key, entry.value, constraints),
+            );
           },
         ),
         SizedBox(height: constraints.maxHeight * 0.015),
         const Divider(height: 20),
         SizedBox(height: constraints.maxHeight * 0.015),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                AppLocalizations.of(context)!.total,
-                style: TextStyle(
-                  fontSize: constraints.maxWidth < 600 ? 18 : 22,
-                  fontWeight: FontWeight.bold,
+        Card(
+          elevation: 3,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Container(
+            padding: EdgeInsets.all(constraints.maxWidth * 0.02),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.white,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  AppLocalizations.of(context)!.total,
+                  style: GoogleFonts.montserrat(
+                    fontSize: constraints.maxWidth < 600 ? 18 : 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              Text(
-                "${totalPrice.toStringAsFixed(2)} ${AppLocalizations.of(context)!.dt}",
-                style: TextStyle(
-                  fontSize: constraints.maxWidth < 600 ? 18 : 22,
-                  color: const Color(0xFFFB8C00),
-                  fontWeight: FontWeight.bold,
+                Text(
+                  "${totalPrice.toStringAsFixed(3)} ${AppLocalizations.of(context)!.dt}",
+                  style: GoogleFonts.montserrat(
+                    fontSize: constraints.maxWidth < 600 ? 18 : 22,
+                    color: const Color(0xFFFB8C00),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         SizedBox(height: constraints.maxHeight * 0.02),
@@ -519,14 +721,22 @@ class _AccueilBakeryState extends State<AccueilBakery> {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.red,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: EdgeInsets.symmetric(
+          horizontal: constraints.maxWidth * 0.02,
+          vertical: constraints.maxWidth * 0.015,
+        ),
+        elevation: 5,
       ),
-      onPressed: () => setState(() => _productsSelected.clear()),
+      onPressed: () => setState(() {
+        _productsSelected.clear();
+        _quantityControllers.clear();
+      }),
       child: Text(
         AppLocalizations.of(context)!.cancel,
-        style: TextStyle(
-          fontSize: constraints.maxWidth < 600 ? 16 : 20,
-          fontWeight: FontWeight.bold,
+        style: GoogleFonts.montserrat(
+          fontSize: constraints.maxWidth < 600 ? 14 : 16,
+          fontWeight: FontWeight.w600,
           color: Colors.white,
         ),
       ),
@@ -537,14 +747,19 @@ class _AccueilBakeryState extends State<AccueilBakery> {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFFFB8C00),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: EdgeInsets.symmetric(
+          horizontal: constraints.maxWidth * 0.02,
+          vertical: constraints.maxWidth * 0.015,
+        ),
+        elevation: 5,
       ),
       onPressed: pay,
       child: Text(
         AppLocalizations.of(context)!.checkout,
-        style: TextStyle(
-          fontSize: constraints.maxWidth < 600 ? 16 : 20,
-          fontWeight: FontWeight.bold,
+        style: GoogleFonts.montserrat(
+          fontSize: constraints.maxWidth < 600 ? 14 : 16,
+          fontWeight: FontWeight.w600,
           color: Colors.white,
         ),
       ),
@@ -553,85 +768,108 @@ class _AccueilBakeryState extends State<AccueilBakery> {
 
   Widget _buildCartItem(
       Product product, int quantity, BoxConstraints constraints) {
+    // Initialize controller if not already present
+    _quantityControllers[product] ??= TextEditingController(text: quantity.toString());
+
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-      ),
+      padding: EdgeInsets.all(constraints.maxWidth * 0.02),
       child: Row(
         children: [
           const SizedBox(width: 10),
-          Column(
-            children: [
-              Text(
-                product.name,
-                style: TextStyle(
-                  fontSize: constraints.maxWidth < 600 ? 12 : 16,
-                  fontWeight: FontWeight.bold,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.name,
+                  style: GoogleFonts.montserrat(
+                    fontSize: constraints.maxWidth < 600 ? 14 : 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-              const SizedBox(height: 5),
-              Row(
-                children: [
-                  Container(
-                    height: constraints.maxWidth < 600 ? 25 : 40,
-                    width: constraints.maxWidth < 600 ? 25 : 40,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFB8C00),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: IconButton(
-                        icon: Icon(Icons.remove,
-                            size: constraints.maxWidth < 600 ? 20 : 24),
-                        onPressed: () => _updateQuantity(product, quantity - 1),
-                        color: Colors.white,
-                        padding: EdgeInsets.zero,
+                const SizedBox(height: 5),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      Container(
+                        height: constraints.maxWidth < 600 ? 22 : 26,
+                        width: constraints.maxWidth < 600 ? 22 : 26,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFB8C00),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: Icon(Icons.remove,
+                              size: constraints.maxWidth < 600 ? 12 : 14),
+                          color: Colors.white,
+                          padding: EdgeInsets.zero,
+                          onPressed: () => _updateQuantity(product, quantity - 1),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 3),
-                  SizedBox(
-                    width: 30,
-                    child: Text(
-                      "$quantity",
-                      style: TextStyle(
-                        fontSize: constraints.maxWidth < 600 ? 18 : 22,
-                        fontWeight: FontWeight.bold,
+                      SizedBox(width: constraints.maxWidth < 600 ? 4 : 6),
+                      SizedBox(
+                        width: constraints.maxWidth < 600 ? 40 : 50,
+                        child: TextField(
+                          controller: _quantityControllers[product],
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            filled: true,
+                            fillColor: Colors.grey[100],
+                          ),
+                          style: GoogleFonts.montserrat(
+                            fontSize: constraints.maxWidth < 600 ? 12 : 14,
+                          ),
+                          textAlign: TextAlign.center,
+                          onChanged: (value) {
+                            final newQuantity = int.tryParse(value) ?? 0;
+                            _updateQuantity(product, newQuantity);
+                          },
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(width: 3),
-                  Container(
-                    height: constraints.maxWidth < 600 ? 25 : 40,
-                    width: constraints.maxWidth < 600 ? 25 : 40,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFB8C00),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: IconButton(
-                        icon: Icon(Icons.add,
-                            size: constraints.maxWidth < 600 ? 20 : 24),
-                        onPressed: () => _updateQuantity(product, quantity + 1),
-                        color: Colors.white,
-                        padding: EdgeInsets.zero,
+                      SizedBox(width: constraints.maxWidth < 600 ? 4 : 6),
+                      Container(
+                        height: constraints.maxWidth < 600 ? 22 : 26,
+                        width: constraints.maxWidth < 600 ? 22 : 26,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFB8C00),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: Icon(Icons.add,
+                              size: constraints.maxWidth < 600 ? 12 : 14),
+                          color: Colors.white,
+                          padding: EdgeInsets.zero,
+                          onPressed: () => _updateQuantity(product, quantity + 1),
+                        ),
                       ),
-                    ),
+                      SizedBox(width: constraints.maxWidth < 600 ? 4 : 6),
+                      // Text(
+                      //   AppLocalizations.of(context)!.quantity,
+                      //   style: GoogleFonts.montserrat(
+                      //     fontSize: constraints.maxWidth < 600 ? 12 : 14,
+                      //     color: Colors.grey[600],
+                      //   ),
+                      // ),
+                    ],
                   ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
           const SizedBox(width: 10),
           Text(
-            "${(product.price * quantity).toStringAsFixed(2)} ${AppLocalizations.of(context)!.dt}",
-            style: TextStyle(
-              fontSize: constraints.maxWidth < 600 ? 16 : 18,
+            "${(product.price * quantity).toStringAsFixed(3)} ${AppLocalizations.of(context)!.dt}",
+            style: GoogleFonts.montserrat(
+              fontSize: constraints.maxWidth < 600 ? 14 : 16,
               color: Colors.grey[600],
             ),
           ),
@@ -649,8 +887,11 @@ class _AccueilBakeryState extends State<AccueilBakery> {
     setState(() {
       if (newQuantity > 0) {
         _productsSelected[product] = newQuantity;
+        _quantityControllers[product]?.text = newQuantity.toString();
       } else {
         _productsSelected.remove(product);
+        _quantityControllers[product]?.dispose();
+        _quantityControllers.remove(product);
       }
     });
   }
@@ -658,13 +899,15 @@ class _AccueilBakeryState extends State<AccueilBakery> {
   void _removeProduct(Product product) {
     setState(() {
       _productsSelected.remove(product);
+      _quantityControllers[product]?.dispose();
+      _quantityControllers.remove(product);
     });
   }
 
   Widget _buildPagination() {
     List<Widget> pageLinks = [];
     const Color arrowColor = Color(0xFFFB8C00);
-    final Color disabledArrowColor = arrowColor.withOpacity(0.1);
+    final Color disabledArrowColor = arrowColor.withOpacity(0.3);
 
     pageLinks.add(
       Container(
@@ -672,7 +915,7 @@ class _AccueilBakeryState extends State<AccueilBakery> {
         margin: const EdgeInsets.symmetric(horizontal: 4.0),
         decoration: BoxDecoration(
           color: prevPageUrl != null ? arrowColor : disabledArrowColor,
-          borderRadius: BorderRadius.circular(5.0),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: GestureDetector(
           onTap: prevPageUrl != null
@@ -681,7 +924,7 @@ class _AccueilBakeryState extends State<AccueilBakery> {
                   fetchProducts(page: currentPage);
                 }
               : null,
-          child: const Icon(Icons.arrow_left, color: Colors.black),
+          child: const Icon(Icons.arrow_left, color: Colors.white),
         ),
       ),
     );
@@ -699,11 +942,11 @@ class _AccueilBakeryState extends State<AccueilBakery> {
               margin: const EdgeInsets.symmetric(horizontal: 4.0),
               decoration: BoxDecoration(
                 color: currentPage == i ? arrowColor : Colors.grey[300],
-                borderRadius: BorderRadius.circular(5.0),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 '$i',
-                style: TextStyle(
+                style: GoogleFonts.montserrat(
                   color: currentPage == i ? Colors.white : Colors.black,
                   fontWeight: FontWeight.bold,
                 ),
@@ -720,7 +963,7 @@ class _AccueilBakeryState extends State<AccueilBakery> {
         margin: const EdgeInsets.symmetric(horizontal: 4.0),
         decoration: BoxDecoration(
           color: nextPageUrl != null ? arrowColor : disabledArrowColor,
-          borderRadius: BorderRadius.circular(5.0),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: GestureDetector(
           onTap: nextPageUrl != null
@@ -729,7 +972,7 @@ class _AccueilBakeryState extends State<AccueilBakery> {
                   fetchProducts(page: currentPage);
                 }
               : null,
-          child: const Icon(Icons.arrow_right, color: Colors.black),
+          child: const Icon(Icons.arrow_right, color: Colors.white),
         ),
       ),
     );
@@ -746,94 +989,85 @@ class _AccueilBakeryState extends State<AccueilBakery> {
 
   Widget _buildFormSearch() {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
+      padding: const EdgeInsets.all(12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _searchController,
+            onChanged: (value) => fetchProducts(),
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context)!.searchByName,
+              prefixIcon: const Icon(Icons.search, color: Color(0xFFFB8C00)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              filled: true,
+              fillColor: Colors.grey[100],
+              labelStyle: GoogleFonts.montserrat(fontSize: 14),
+            ),
+            style: GoogleFonts.montserrat(fontSize: 14),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: type,
+            onChanged: (value) {
+              setState(() => type = value!);
+              fetchProducts();
+            },
+            items: [
+              DropdownMenuItem(
+                  value: "all",
+                  child: Text(AppLocalizations.of(context)!.all,
+                      style: GoogleFonts.montserrat())),
+              DropdownMenuItem(
+                  value: "Salty",
+                  child: Text(AppLocalizations.of(context)!.salty,
+                      style: GoogleFonts.montserrat())),
+              DropdownMenuItem(
+                  value: "Sweet",
+                  child: Text(AppLocalizations.of(context)!.sweet,
+                      style: GoogleFonts.montserrat())),
+            ],
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.grey[100],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            style: GoogleFonts.montserrat(fontSize: 14),
           ),
         ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _searchController,
-              onChanged: (value) => fetchProducts(),
-              decoration: InputDecoration(
-                labelText: AppLocalizations.of(context)!.searchByName,
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10.0)),
-              ),
-            ),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              value: type,
-              onChanged: (value) {
-                setState(() => type = value!);
-                fetchProducts();
-              },
-              items: [
-                DropdownMenuItem(
-                    value: "all",
-                    child: Text(AppLocalizations.of(context)!.all)),
-                DropdownMenuItem(
-                    value: "Salty",
-                    child: Text(AppLocalizations.of(context)!.salty)),
-                DropdownMenuItem(
-                    value: "Sweet",
-                    child: Text(AppLocalizations.of(context)!.sweet)),
-              ],
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.grey[400],
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30.0)),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
   Widget _buildContProducts() {
     return Container(
-      padding: const EdgeInsets.all(32.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.grey.withOpacity(0.3),
-              spreadRadius: 2,
-              blurRadius: 5),
-        ],
-      ),
+      padding: const EdgeInsets.all(20.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Flexible(
             child: Text(
               AppLocalizations.of(context)!.totalProducts,
-              style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold),
+              style: GoogleFonts.montserrat(
+                color: Colors.grey,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           const SizedBox(width: 10),
           Text(
             total.toString(),
-            style: const TextStyle(
-                color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
+            style: GoogleFonts.montserrat(
+              color: Colors.black,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -849,26 +1083,30 @@ class PermissionAlertDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(AppLocalizations.of(context)!.permissionRequired),
+      title: Text(AppLocalizations.of(context)!.permissionRequired,
+          style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(message),
+          Text(message, style: GoogleFonts.montserrat()),
           const SizedBox(height: 20),
-          Text(AppLocalizations.of(context)!.enableManually),
+          Text(AppLocalizations.of(context)!.enableManually,
+              style: GoogleFonts.montserrat()),
         ],
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(AppLocalizations.of(context)!.cancel),
+          child: Text(AppLocalizations.of(context)!.cancel,
+              style: GoogleFonts.montserrat()),
         ),
         TextButton(
           onPressed: () async {
             await openAppSettings();
             Navigator.pop(context);
           },
-          child: Text(AppLocalizations.of(context)!.settings),
+          child: Text(AppLocalizations.of(context)!.settings,
+              style: GoogleFonts.montserrat()),
         ),
       ],
     );

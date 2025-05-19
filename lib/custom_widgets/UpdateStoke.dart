@@ -22,7 +22,7 @@ void showUpdateStokeConfirmationDialog(
   // Dropdown options
   final List<String> typeOptions = ['Ajout', 'Retrait'];
   final Map<String, List<String>> justificationOptions = {
-    'Ajout': ['facture', 'pv', 'facture frauduleuse'],
+    'Ajout': ['facture', 'pv'],
     'Retrait': ['pv', 'consommation'],
   };
   final Map<String, List<String>> actionOptions = {
@@ -40,7 +40,8 @@ void showUpdateStokeConfirmationDialog(
           ),
           title: Text(
             AppLocalizations.of(context)!.confirmation,
-            style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            style:
+                const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
           content: SingleChildScrollView(
@@ -49,9 +50,12 @@ void showUpdateStokeConfirmationDialog(
               children: [
                 RichText(
                   text: TextSpan(
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.black),
                     children: [
-                      TextSpan(text: '${AppLocalizations.of(context)!.updateConfirmation} '),
+                      TextSpan(
+                          text:
+                              '${AppLocalizations.of(context)!.updateConfirmation} '),
                       TextSpan(
                         text: material.name,
                         style: const TextStyle(color: Colors.red),
@@ -70,6 +74,14 @@ void showUpdateStokeConfirmationDialog(
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
+                    ),
+                    suffixIcon: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Text(
+                        material.unit,
+                        style: const TextStyle(
+                            color: Colors.grey, fontWeight: FontWeight.bold),
+                      ),
                     ),
                     filled: true,
                     fillColor: Colors.white,
@@ -132,7 +144,8 @@ void showUpdateStokeConfirmationDialog(
                     filled: true,
                     fillColor: Colors.white,
                   ),
-                  items: (justificationOptions[selectedType] ?? []).map((String justification) {
+                  items: (justificationOptions[selectedType] ?? [])
+                      .map((String justification) {
                     return DropdownMenuItem<String>(
                       value: justification,
                       child: Text(justification),
@@ -158,7 +171,8 @@ void showUpdateStokeConfirmationDialog(
                     filled: true,
                     fillColor: Colors.white,
                   ),
-                  items: (actionOptions[selectedType] ?? []).map((String action) {
+                  items:
+                      (actionOptions[selectedType] ?? []).map((String action) {
                     return DropdownMenuItem<String>(
                       value: action,
                       child: Text(action),
@@ -176,10 +190,15 @@ void showUpdateStokeConfirmationDialog(
                   // Price Facture Input
                   TextField(
                     controller: priceFactureController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     decoration: InputDecoration(
                       hintText: AppLocalizations.of(context)!.enterPriceFacture,
-                      prefixIcon: const Icon(Icons.attach_money),
+                      prefixIcon: Image.asset(
+                        'assets/icon/icon_DT.png',
+                        width: 5,
+                        height: 5,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -227,32 +246,37 @@ void showUpdateStokeConfirmationDialog(
                     int.tryParse(quantityController.text) == null ||
                     int.parse(quantityController.text) <= 0) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(AppLocalizations.of(context)!.invalidQuantities)));
+                      content: Text(
+                          AppLocalizations.of(context)!.invalidQuantities)));
                   return;
                 }
                 final quantity = int.parse(quantityController.text);
-                if (selectedType == 'Ajout' &&
-                    (quantity + material.reelQuantity) > material.maxQuantity) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(AppLocalizations.of(context)!.quantityExceedsMax)));
-                  return;
-                }
+                // if (selectedType == 'Ajout' &&
+                //     (quantity + material.reelQuantity) > material.maxQuantity) {
+                //   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                //       content: Text(
+                //           AppLocalizations.of(context)!.quantityExceedsMax)));
+                //   return;
+                // }
                 if (selectedType == 'Retrait' &&
                     quantity > material.reelQuantity) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(AppLocalizations.of(context)!.quantityExceedsAvailable)));
+                      content: Text(AppLocalizations.of(context)!
+                          .quantityExceedsAvailable)));
                   return;
                 }
 
                 // Libelle Validation
                 if (libelleController.text.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(AppLocalizations.of(context)!.invalidLibelle)));
+                      content:
+                          Text(AppLocalizations.of(context)!.invalidLibelle)));
                   return;
                 }
                 if (libelleController.text.length < 3) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(AppLocalizations.of(context)!.libelleTooShort)));
+                      content:
+                          Text(AppLocalizations.of(context)!.libelleTooShort)));
                   return;
                 }
 
@@ -266,14 +290,16 @@ void showUpdateStokeConfirmationDialog(
                 // Justification Validation
                 if (selectedJustification == null) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(AppLocalizations.of(context)!.selectJustification)));
+                      content: Text(
+                          AppLocalizations.of(context)!.selectJustification)));
                   return;
                 }
 
                 // Action Validation
                 if (selectedAction == null) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(AppLocalizations.of(context)!.selectAction)));
+                      content:
+                          Text(AppLocalizations.of(context)!.selectAction)));
                   return;
                 }
 
@@ -282,18 +308,22 @@ void showUpdateStokeConfirmationDialog(
                   if (priceFactureController.text.isEmpty ||
                       double.tryParse(priceFactureController.text) == null) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text(AppLocalizations.of(context)!.invalidPriceFacture)));
+                        content: Text(AppLocalizations.of(context)!
+                            .invalidPriceFacture)));
                     return;
                   }
-                  final priceFacture = double.parse(priceFactureController.text);
+                  final priceFacture =
+                      double.parse(priceFactureController.text);
                   if (priceFacture <= 0) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text(AppLocalizations.of(context)!.priceFactureMustBePositive)));
+                        content: Text(AppLocalizations.of(context)!
+                            .priceFactureMustBePositive)));
                     return;
                   }
                   if (priceFacture > 1000000) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text(AppLocalizations.of(context)!.priceFactureTooHigh)));
+                        content: Text(AppLocalizations.of(context)!
+                            .priceFactureTooHigh)));
                     return;
                   }
                 }
@@ -305,7 +335,8 @@ void showUpdateStokeConfirmationDialog(
                     : null;
 
                 // Call API to update
-                await EmployeesPrimaryMaterialService().updateReelQuantityPrimaryMaterial(
+                await EmployeesPrimaryMaterialService()
+                    .updateReelQuantityPrimaryMaterial(
                   material.id,
                   quantityController.text,
                   libelle: libelle,
@@ -324,7 +355,8 @@ void showUpdateStokeConfirmationDialog(
               },
               child: Text(
                 AppLocalizations.of(context)!.save,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ),
           ],

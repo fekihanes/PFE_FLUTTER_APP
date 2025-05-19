@@ -4,10 +4,12 @@ import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/services/background_service.dart';
 import 'package:flutter_application/services/websocket/Background_notification_service.dart';
 import 'package:flutter_application/services/websocket/websocket_client.dart';
-import 'package:flutter_application/view/employees/Boulanger/MelangeListPage.dart';
+import 'package:flutter_application/view/bakery/Accueil_bakery.dart';
+import 'package:flutter_application/view/employees/Boulanger/CommandeMelangePage.dart';
+import 'package:flutter_application/view/employees/livreur/Livreurpayment_status_page.dart';
 import 'package:flutter_application/view/login_page.dart';
 import 'package:flutter_application/view/admin/home_page_admin.dart';
-import 'package:flutter_application/view/manager/Editing_the_bakery_profile.dart';
+import 'package:flutter_application/view/manager/HomePage.dart';
 import 'package:flutter_application/view/special_customer/special_customerPageAccueilBakery.dart';
 import 'package:flutter_application/view/user/page_find_bahery.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -124,6 +126,7 @@ class _MyAppState extends State<MyApp> {
 
   Future<Widget> _getHomePage() async {
     try {
+      await AuthService().getUserProfile(context);
       print('🏠 Fetching home page...');
       final prefs = await SharedPreferences.getInstance();
       final role = prefs.getString('role');
@@ -143,13 +146,19 @@ class _MyAppState extends State<MyApp> {
         case 'patissier':
         case 'boulanger':
           print('➡️ Navigating to MelangeListPage');
-          return const MelangeListPage();
+          return const CommandeMelangePage();
         case 'admin':
           print('➡️ Navigating to HomePageAdmin');
           return const HomePageAdmin();
         case 'manager':
           print('➡️ Navigating to EditingTheBakeryProfile');
-          return const EditingTheBakeryProfile();
+          return const HomePage();
+        case 'livreur':
+          print('➡️ Navigating to LivreurPaymentStatusPage');
+          return const LivreurPaymentStatusPage();
+        case 'caissier':
+          print('➡️ Navigating to AccueilBakery');
+          return const AccueilBakery(products_selected: {});
         case 'user':
           print('➡️ Navigating to PageFindBahery');
           return const PageFindBahery();

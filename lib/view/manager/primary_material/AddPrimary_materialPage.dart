@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_application/custom_widgets/CustomTextField.dart';
 import 'package:flutter_application/custom_widgets/ImageInput.dart';
+import 'package:flutter_application/custom_widgets/NotificationIcon.dart';
 import 'package:flutter_application/services/Bakery/bakery_service.dart';
 import 'package:flutter_application/services/emloyees/primary_materials.dart';
 import 'package:flutter_application/view/manager/primary_material/gestion_de_stock.dart';
@@ -20,7 +21,6 @@ class AddPrimary_materialPage extends StatefulWidget {
 class _AddPrimary_materialPageState extends State<AddPrimary_materialPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _costController = TextEditingController();
   final TextEditingController _quantity_max_Controller =
       TextEditingController();
   final TextEditingController _quantity_min_Controller =
@@ -44,9 +44,12 @@ class _AddPrimary_materialPageState extends State<AddPrimary_materialPage> {
     });
   }
 
+  Future<bool> _onBackPressed() async {
+    return true; // Allow navigation back by default
+  }
+
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
-      // Vérification supplémentaire pour les quantités
       int? quantityMax = int.tryParse(_quantity_max_Controller.text);
       int? quantityMin = int.tryParse(_quantity_min_Controller.text);
 
@@ -76,172 +79,236 @@ class _AddPrimary_materialPageState extends State<AddPrimary_materialPage> {
         _quantity_min_Controller.text,
         _quantity_max_Controller.text,
         image,
-        _costController.text,
         context,
       );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const GestionDeStoke(),
+        ),
+      );
     }
-             Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const GestionDeStoke(),
-                ),
-              );
   }
 
   @override
-
   Widget build(BuildContext context) {
+    final isWebLayout = MediaQuery.of(context).size.width >= 600;
     return Scaffold(
-      backgroundColor: const Color(0xFFE5E7EB),
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.add_primary_material),
+        title: Text(
+          AppLocalizations.of(context)!.add_primary_material,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        backgroundColor: const Color(0xFFFB8C00),
+        iconTheme: const IconThemeData(color: Colors.white),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => _onBackPressed().then((canPop) {
+            if (canPop) Navigator.pop(context);
+          }),
+        ),
+        actions: const [
+          NotificationIcon(),
+          SizedBox(width: 8),
+        ],
+      ),
+      body: isWebLayout ? buildFromWeb(context) : buildFromMobile(context),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFFFB8C00),
+        onPressed: _submitForm,
+        child: const Icon(Icons.check, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget buildFromMobile(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+      child: SingleChildScrollView(
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-              CustomTextField(
+              const SizedBox(height: 16),
+              _buildTextField(
                 controller: _nameController,
-                labelText: AppLocalizations.of(context)!.primary_material_Name,
+                label: AppLocalizations.of(context)!.primary_material_Name,
                 icon: Icons.shopping_cart,
-                validator: (value) {
-                  if (value!.isEmpty) {
-                    return AppLocalizations.of(context)!.requiredField;
-                  }
-                  return null;
-                },
+                isWeb: false,
               ),
-              const SizedBox(height: 20),
-              CustomTextField(
-                controller: _costController,
-                labelText: AppLocalizations.of(context)!.cost,
-                icon: Icons.monetization_on_outlined,
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(
-                      RegExp(r'^\d*\.?\d{0,2}')), // max 2 décimales
-                ],
-
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return AppLocalizations.of(context)!.please_enter_a_cost;
-                  }
-                  final cost = double.tryParse(value);
-                  if (cost == null) {
-                    return AppLocalizations.of(context)!.please_enter_a_valid_number;
-                  }
-                  if (cost <= 0) {
-                    return AppLocalizations.of(context)!.cost_must_be_greater_than_zero;
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              CustomTextField(
+              const SizedBox(height: 16),
+              _buildTextField(
                 controller: _quantity_max_Controller,
-                labelText:
-                    AppLocalizations.of(context)!.primary_material_max_quantity,
+                label: AppLocalizations.of(context)!.primary_material_max_quantity,
                 icon: FontAwesomeIcons.cubes,
                 keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return AppLocalizations.of(context)!.requiredField;
-                  }
-                  int? quantityMax = int.tryParse(value);
-                  if (quantityMax == null || quantityMax <= 0) {
-                    return AppLocalizations.of(context)!.invalidQuantities;
-                  }
-                  return null;
-                },
+                isWeb: false,
               ),
-              const SizedBox(height: 20),
-              CustomTextField(
+              const SizedBox(height: 16),
+              _buildTextField(
                 controller: _quantity_min_Controller,
-                labelText:
-                    AppLocalizations.of(context)!.primary_material_min_quantity,
+                label: AppLocalizations.of(context)!.primary_material_min_quantity,
                 icon: FontAwesomeIcons.cubes,
                 keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return AppLocalizations.of(context)!.requiredField;
-                  }
-                  int? quantityMin = int.tryParse(value);
-                  if (quantityMin == null || quantityMin <= 0) {
-                    return AppLocalizations.of(context)!.invalidQuantities;
-                  }
-                  return null;
-                },
+                isWeb: false,
               ),
-              const SizedBox(height: 20),
-              _buildToggleButtons(context),
-              const SizedBox(height: 20),
-              Column(
-                children: [
-                  ImageInputWidget(
-                    onImageSelected: _setImage,
-                    imagePath: _imagePath,
-                    webImage: _webImage,
-                    width: 150,
-                    height: 150,
-                  ),
-                  if ((_imagePath == null && _webImage == null) &&
-                      (_formKey.currentState?.validate() ?? false))
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        AppLocalizations.of(context)!.requiredImage,
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+              const SizedBox(height: 16),
+              _buildToggleButtons(context, isWeb: false),
+              const SizedBox(height: 16),
+              _buildImageInput(isWeb: false),
+              const SizedBox(height: 16),
             ],
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFFFB8C00),
-        onPressed: _submitForm,
-        child: const Icon(
-          Icons.check,
-          color: Colors.white,
         ),
       ),
     );
   }
 
-  Widget _buildToggleButtons(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _buildToggleButton(
-          text: AppLocalizations.of(context)!.piece,
-          icon: FontAwesomeIcons.boxesStacked,
-          isSelected: _isUnitSelected == "piece",
-          onTap: () => setState(() => _isUnitSelected = "piece"),
+  Widget buildFromWeb(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFFF3F4F6),
+            Color(0xFFFFE0B2),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        _buildToggleButton(
-          text: AppLocalizations.of(context)!.kg,
-          icon: FontAwesomeIcons.weightHanging,
-          isSelected: _isUnitSelected == "kg",
-          onTap: () => setState(() => _isUnitSelected = "kg"),
+      ),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              const SizedBox(height: 24),
+              _buildTextField(
+                controller: _nameController,
+                label: AppLocalizations.of(context)!.primary_material_Name,
+                icon: Icons.shopping_cart,
+                isWeb: true,
+              ),
+              const SizedBox(height: 24),
+              _buildTextField(
+                controller: _quantity_max_Controller,
+                label: AppLocalizations.of(context)!.primary_material_max_quantity,
+                icon: FontAwesomeIcons.cubes,
+                keyboardType: TextInputType.number,
+                isWeb: true,
+              ),
+              const SizedBox(height: 24),
+              _buildTextField(
+                controller: _quantity_min_Controller,
+                label: AppLocalizations.of(context)!.primary_material_min_quantity,
+                icon: FontAwesomeIcons.cubes,
+                keyboardType: TextInputType.number,
+                isWeb: true,
+              ),
+              const SizedBox(height: 24),
+              _buildToggleButtons(context, isWeb: true),
+              const SizedBox(height: 24),
+              _buildImageInput(isWeb: true),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
-        _buildToggleButton(
-          text: AppLocalizations.of(context)!.litre,
-          icon: FontAwesomeIcons.wineBottle,
-          isSelected: _isUnitSelected == "litre",
-          onTap: () => setState(() => _isUnitSelected = "litre"),
-        ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType? keyboardType,
+    required bool isWeb,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+          ),
+        ],
+      ),
+      child: CustomTextField(
+        controller: controller,
+        labelText: label,
+        icon: Icon(icon),
+        keyboardType: keyboardType ?? TextInputType.text,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return AppLocalizations.of(context)!.requiredField;
+          }
+          if (keyboardType == TextInputType.number) {
+            int? quantity = int.tryParse(value);
+            if (quantity == null || quantity <= 0) {
+              return AppLocalizations.of(context)!.invalidQuantities;
+            }
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  Widget _buildToggleButtons(BuildContext context, {required bool isWeb}) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildToggleButton(
+            text: AppLocalizations.of(context)!.piece,
+            icon: FontAwesomeIcons.boxesStacked,
+            isSelected: _isUnitSelected == "piece",
+            onTap: () => setState(() => _isUnitSelected = "piece"),
+            isWeb: isWeb,
+          ),
+          _buildToggleButton(
+            text: AppLocalizations.of(context)!.kg,
+            icon: FontAwesomeIcons.weightHanging,
+            isSelected: _isUnitSelected == "kg",
+            onTap: () => setState(() => _isUnitSelected = "kg"),
+            isWeb: isWeb,
+          ),
+          _buildToggleButton(
+            text: AppLocalizations.of(context)!.litre,
+            icon: FontAwesomeIcons.wineBottle,
+            isSelected: _isUnitSelected == "litre",
+            onTap: () => setState(() => _isUnitSelected = "litre"),
+            isWeb: isWeb,
+          ),
+        ],
+      ),
     );
   }
 
@@ -250,6 +317,7 @@ class _AddPrimary_materialPageState extends State<AddPrimary_materialPage> {
     required IconData icon,
     required bool isSelected,
     required VoidCallback onTap,
+    required bool isWeb,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -272,19 +340,63 @@ class _AddPrimary_materialPageState extends State<AddPrimary_materialPage> {
         ),
         child: Row(
           children: [
-            Icon(icon,
-                color: isSelected ? Colors.white : const Color(0xFF4B5563)),
+            Icon(
+              icon,
+              color: isSelected ? Colors.white : const Color(0xFF4B5563),
+              size: isWeb ? 20 : 18,
+            ),
             const SizedBox(width: 8),
             Text(
               text,
               style: TextStyle(
                 color: isSelected ? Colors.white : const Color(0xFF4B5563),
-                fontSize: 16,
+                fontSize: isWeb ? 18 : 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildImageInput({required bool isWeb}) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          ImageInputWidget(
+            onImageSelected: _setImage,
+            imagePath: _imagePath,
+            webImage: _webImage,
+            width: isWeb ? 200 : 150,
+            height: isWeb ? 200 : 150,
+          ),
+          if ((_imagePath == null && _webImage == null) &&
+              (_formKey.currentState?.validate() ?? false))
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(
+                AppLocalizations.of(context)!.requiredImage,
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: isWeb ? 14 : 12,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

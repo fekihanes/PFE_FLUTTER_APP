@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Melange.dart';
@@ -13,11 +14,15 @@ import 'package:intl/intl.dart';
 class UpdateMelangePage extends StatefulWidget {
   final Melange melange;
   final VoidCallback onUpdate;
+  final Map<int, bool> selectedProducts;
+  final List<int> selectedProductIds;
 
-  const UpdateMelangePage({
+  UpdateMelangePage({
     Key? key,
     required this.melange,
     required this.onUpdate,
+    required this.selectedProducts,
+    required this.selectedProductIds,
   }) : super(key: key);
 
   @override
@@ -27,23 +32,24 @@ class UpdateMelangePage extends StatefulWidget {
 class _UpdateMelangePageState extends State<UpdateMelangePage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _dateController;
+  late TextEditingController _timeController;
   List<Map<String, dynamic>> workList = [];
   List<Product> allWorkProducts = [];
   Map<int, double> quantities = {};
   Map<int, TextEditingController> quantityControllers = {};
   List<Product> selectedProducts = [];
-  TextEditingController? _timeController;
+  late Map<int, bool> selectedProductIds;
   bool isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    selectedProductIds = Map.from(widget.selectedProducts);
     _dateController = TextEditingController(
       text: DateFormat('yyyy-MM-dd').format(widget.melange.day),
     );
     _timeController = TextEditingController();
     _initializeWorkList();
-    _fetchInitialProducts();
   }
 
   Future<void> _initializeWorkList() async {
@@ -51,15 +57,14 @@ class _UpdateMelangePageState extends State<UpdateMelangePage> {
       isLoading = true;
     });
 
-    // Initialize workList from melange.work
     final initialWorkList = widget.melange.work.map((work) {
-      return {
+      return <String, dynamic>{
         'time': work.time,
         'products': work.productIds.asMap().entries.map((entry) {
           final index = entry.key;
           final productId = entry.value;
           final quantity = work.quantities[index].toDouble();
-          return {
+          return <String, dynamic>{
             'product_id': productId,
             'quantity': quantity,
           };
@@ -67,67 +72,71 @@ class _UpdateMelangePageState extends State<UpdateMelangePage> {
       };
     }).toList();
 
-    // Collect all product IDs
     final allProductIds = <int>{};
     for (var work in widget.melange.work) {
       allProductIds.addAll(work.productIds);
     }
 
-    // Fetch products
     if (allProductIds.isNotEmpty) {
-      final products = await EmloyeesProductService().fetchProductsByIds(
-        context,
-        allProductIds.toList(),
-      );
-      setState(() {
-        allWorkProducts = products;
-        workList = initialWorkList;
-        // Initialize quantities and controllers
-        for (var product in products) {
-          quantities[product.id] = 0.0;
-          quantityControllers[product.id] = TextEditingController(text: '0');
+      try {
+        final products = await EmloyeesProductService().fetchProductsByIds(context, allProductIds.toList());
+        if (mounted) {
+          setState(() {
+            allWorkProducts = products;
+            workList = initialWorkList;
+            isLoading = false;
+          });
         }
-        // Set initial quantities from workList
-        for (var work in workList) {
-          for (var productEntry in work['products']) {
-            final productId = productEntry['product_id'] as int;
-            final quantity = productEntry['quantity'] as double;
-            quantities[productId] = quantity;
-            quantityControllers[productId]?.text = quantity.toStringAsFixed(0);
-          }
+        await _fetchAdditionalProducts();
+      } catch (e) {
+        if (mounted) {
+          Customsnackbar().showErrorSnackbar(
+            context,
+            AppLocalizations.of(context)!.errorOccurred ?? 'Une erreur s\'est produite',
+          );
         }
-        isLoading = false;
-      });
+        setState(() {
+          isLoading = false;
+        });
+      }
     } else {
       setState(() {
         isLoading = false;
       });
+      await _fetchAdditionalProducts();
     }
   }
 
-  Future<void> _fetchInitialProducts() async {
-    if (allWorkProducts.isEmpty) {
-      setState(() {
-        isLoading = true;
-      });
-      final products = await EmloyeesProductService().get_my_articles(context,null);
-      setState(() {
-        allWorkProducts = products ?? [];
-        for (var product in allWorkProducts) {
-          if (!quantities.containsKey(product.id)) {
-            quantities[product.id] = 0.0;
-            quantityControllers[product.id] = TextEditingController(text: '0');
+  Future<void> _fetchAdditionalProducts() async {
+    try {
+      final products = await EmloyeesProductService().get_my_articles(context, null);
+      if (mounted) {
+        setState(() {
+          for (var product in products ?? []) {
+            if (!allWorkProducts.any((p) => p.id == product.id)) {
+              allWorkProducts.add(product);
+            }
+            if (!quantities.containsKey(product.id)) {
+              quantities[product.id] = 0.0;
+              quantityControllers[product.id] = TextEditingController(text: '0');
+            }
           }
-        }
-        isLoading = false;
-      });
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        Customsnackbar().showErrorSnackbar(
+          context,
+          AppLocalizations.of(context)!.errorOccurred ?? 'Une erreur s\'est produite',
+        );
+      }
     }
   }
 
   @override
   void dispose() {
     _dateController.dispose();
-    _timeController?.dispose();
+    _timeController.dispose();
     quantityControllers.forEach((_, controller) => controller.dispose());
     super.dispose();
   }
@@ -138,8 +147,17 @@ class _UpdateMelangePageState extends State<UpdateMelangePage> {
       initialDate: widget.melange.day,
       firstDate: DateTime.now(),
       lastDate: DateTime(2101),
+      builder: kIsWeb
+          ? (context, child) => Theme(
+                data: ThemeData.light().copyWith(
+                  dialogBackgroundColor: Colors.white,
+                  colorScheme: const ColorScheme.light(primary: Color(0xFFFB8C00)),
+                ),
+                child: child!,
+              )
+          : null,
     );
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() {
         _dateController.text = DateFormat('yyyy-MM-dd').format(picked);
       });
@@ -150,8 +168,17 @@ class _UpdateMelangePageState extends State<UpdateMelangePage> {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
+      builder: kIsWeb
+          ? (context, child) => Theme(
+                data: ThemeData.light().copyWith(
+                  dialogBackgroundColor: Colors.white,
+                  colorScheme: const ColorScheme.light(primary: Color(0xFFFB8C00)),
+                ),
+                child: child!,
+              )
+          : null,
     );
-    if (picked != null) {
+    if (picked != null && mounted) {
       final now = DateTime.now();
       final selectedTime = DateTime(
         now.year,
@@ -161,7 +188,7 @@ class _UpdateMelangePageState extends State<UpdateMelangePage> {
         picked.minute,
       );
       setState(() {
-        _timeController?.text = DateFormat('HH:mm').format(selectedTime);
+        _timeController.text = DateFormat('HH:mm').format(selectedTime);
       });
     }
   }
@@ -169,45 +196,74 @@ class _UpdateMelangePageState extends State<UpdateMelangePage> {
   Future<void> _selectProducts() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const ProductIdsPage()),
+      MaterialPageRoute(
+        builder: (context) => ProductIdsPage(
+          selectedProducts: selectedProductIds,
+          onSelectionConfirmed: (List<int> selectedIds) async {
+            try {
+              final products = await EmloyeesProductService().fetchProductsByIds(context, selectedIds);
+              if (mounted) {
+                setState(() {
+                  // Clear existing quantityControllers
+                  quantityControllers.forEach((_, controller) => controller.dispose());
+                  quantityControllers.clear();
+
+                  // Update selectedProducts
+                  selectedProducts = products;
+
+                  // Update selectedProductIds
+                  selectedProductIds = Map.fromEntries(selectedIds.map((id) => MapEntry(id, true)));
+
+                  // Add new products to allWorkProducts if they don't already exist
+                  allWorkProducts.addAll(products.where((p) => !allWorkProducts.any((existing) => existing.id == p.id)));
+
+                  // Initialize quantities and quantityControllers for the new products
+                  for (var product in products) {
+                    quantities[product.id] = 0.0;
+                    quantityControllers[product.id] = TextEditingController(text: '0');
+                  }
+                });
+              }
+            } catch (e) {
+              if (mounted) {
+                Customsnackbar().showErrorSnackbar(
+                  context,
+                  AppLocalizations.of(context)!.errorOccurred ?? 'Une erreur s\'est produite',
+                );
+              }
+            }
+          },
+        ),
+      ),
     );
 
-    if (result != null && result is List<int> && result.isNotEmpty) {
-      try {
-        final products = await EmloyeesProductService().fetchProductsByIds(context, result);
-        setState(() {
-          selectedProducts = products;
-          for (var product in products) {
-            if (!allWorkProducts.any((p) => p.id == product.id)) {
-              allWorkProducts.add(product);
-            }
-            if (!quantities.containsKey(product.id)) {
-              quantities[product.id] = 0.0;
-              quantityControllers[product.id] = TextEditingController(text: '0');
-            }
-          }
-        });
-      } catch (e) {
-        Customsnackbar().showErrorSnackbar(
-          context,
-          AppLocalizations.of(context)!.errorOccurred,
-        );
-      }
+    if (result == true && mounted) {
+      // Selection was confirmed, state already updated via callback
     }
   }
 
   void _addWorkEntry() {
-    if (_timeController!.text.isEmpty) {
+    if (_timeController.text.isEmpty) {
       Customsnackbar().showErrorSnackbar(
         context,
-        AppLocalizations.of(context)!.selectTimePrompt,
+        AppLocalizations.of(context)!.selectTimePrompt ?? 'Veuillez sélectionner une heure',
+      );
+      return;
+    }
+
+    try {
+      DateFormat('HH:mm').parse(_timeController.text);
+    } catch (e) {
+      Customsnackbar().showErrorSnackbar(
+        context,
+        'Format d\'heure invalide',
       );
       return;
     }
 
     final selectedQuantities = quantities.entries
-        .where((entry) => entry.value > 0)
-        .map((entry) => {
+        .where((entry) => entry.value > 0 && allWorkProducts.any((p) => p.id == entry.key))
+        .map((entry) => <String, dynamic>{
               'product_id': entry.key,
               'quantity': entry.value,
             })
@@ -216,23 +272,57 @@ class _UpdateMelangePageState extends State<UpdateMelangePage> {
     if (selectedQuantities.isEmpty) {
       Customsnackbar().showErrorSnackbar(
         context,
-        AppLocalizations.of(context)!.addProductPrompt,
+        AppLocalizations.of(context)!.addProductPrompt ?? 'Veuillez ajouter au moins un produit avec une quantité',
       );
       return;
     }
 
     setState(() {
-      workList.add({
-        'time': _timeController!.text,
-        'products': selectedQuantities,
-      });
-      // Clear selections
+      final existingWorkIndex = workList.indexWhere((work) => work['time'] == _timeController.text);
+      if (existingWorkIndex != -1) {
+        final existingProducts = workList[existingWorkIndex]['products'] as List<Map<String, dynamic>>;
+        final mergedProducts = <Map<String, dynamic>>[];
+        final existingProductMap = {
+          for (var product in existingProducts)
+            product['product_id'] as int: product['quantity'] as double
+        };
+
+        for (var newProduct in selectedQuantities) {
+          final productId = newProduct['product_id'] as int;
+          final newQuantity = newProduct['quantity'] as double;
+          final existingQuantity = existingProductMap[productId] ?? 0.0;
+          mergedProducts.add(<String, dynamic>{
+            'product_id': productId,
+            'quantity': existingQuantity + newQuantity,
+          });
+          quantities[productId] = existingQuantity + newQuantity;
+          quantityControllers[productId]?.text = (existingQuantity + newQuantity).toStringAsFixed(0);
+        }
+
+        for (var product in existingProducts) {
+          final productId = product['product_id'] as int;
+          if (!selectedQuantities.any((p) => p['product_id'] == productId)) {
+            mergedProducts.add(product);
+          }
+        }
+
+        workList[existingWorkIndex] = <String, dynamic>{
+          'time': _timeController.text,
+          'products': mergedProducts,
+        };
+      } else {
+        workList.add(<String, dynamic>{
+          'time': _timeController.text,
+          'products': selectedQuantities,
+        });
+      }
+
       selectedProducts.clear();
       quantities.updateAll((key, value) => 0.0);
       quantityControllers.forEach((key, controller) {
         controller.text = '0';
       });
-      _timeController!.clear();
+      _timeController.clear();
     });
   }
 
@@ -247,7 +337,7 @@ class _UpdateMelangePageState extends State<UpdateMelangePage> {
     if (workList.isEmpty) {
       Customsnackbar().showErrorSnackbar(
         context,
-        AppLocalizations.of(context)!.addProductPrompt,
+        AppLocalizations.of(context)!.addProductPrompt ?? 'Veuillez ajouter au moins un produit avec une quantité',
       );
       return;
     }
@@ -256,14 +346,12 @@ class _UpdateMelangePageState extends State<UpdateMelangePage> {
       isLoading = true;
     });
 
-    // Sort workList by time
     workList.sort((a, b) {
       final timeA = DateFormat('HH:mm').parse(a['time']);
       final timeB = DateFormat('HH:mm').parse(b['time']);
       return timeA.compareTo(timeB);
     });
 
-    // Transform workList to MelangeWork
     final melangeWork = workList.map((work) {
       final products = work['products'] as List<Map<String, dynamic>>;
       return MelangeWork(
@@ -282,296 +370,698 @@ class _UpdateMelangePageState extends State<UpdateMelangePage> {
 
     try {
       await MelangeService().updateMelange(updatedMelange, context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppLocalizations.of(context)?.melangeUpdated ?? 'Mélange mis à jour avec succès',
-          ),
-        ),
-      );
-      widget.onUpdate();
-      Navigator.pop(context);
+      if (mounted) {
+        Customsnackbar().showSuccessSnackbar(
+          context,
+          AppLocalizations.of(context)!.melangeUpdated ?? 'Mélange mis à jour avec succès',
+        );
+        widget.onUpdate();
+        Navigator.pop(context);
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppLocalizations.of(context)?.errorUpdatingMelange ?? 'Erreur lors de la mise à jour: $e',
-          ),
+      if (mounted) {
+        Customsnackbar().showErrorSnackbar(
+          context,
+          AppLocalizations.of(context)!.errorUpdatingMelange ?? 'Erreur lors de la mise à jour: $e',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<bool> _onBackPressed() async {
+    if (workList.isNotEmpty || selectedProducts.isNotEmpty) {
+      final action = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(AppLocalizations.of(context)!.unsavedChanges ?? 'Changements non enregistrés'),
+          content: Text(AppLocalizations.of(context)!.unsavedChangesPrompt ??
+              'Vous avez des changements non enregistrés. Voulez-vous sauvegarder avant de quitter ?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'cancel'),
+              child: Text(AppLocalizations.of(context)!.cancel ?? 'Annuler'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'discard'),
+              child: Text(AppLocalizations.of(context)!.exitWithoutSaving ?? 'Quitter sans sauvegarder'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'save'),
+              child: Text(AppLocalizations.of(context)!.saveAndExit ?? 'Sauvegarder et quitter'),
+            ),
+          ],
         ),
       );
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
+
+      if (action == 'save') {
+        await _updateMelange();
+        return true; // Will pop if successful, handled in _updateMelange
+      } else if (action == 'discard') {
+        return true;
+      }
+      return false; // Cancel or null
     }
+    return true;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Create a sorted copy of workList for display
-    final sortedWorkList = List<Map<String, dynamic>>.from(workList);
-    sortedWorkList.sort((a, b) {
-      final timeA = DateFormat('HH:mm').parse(a['time']);
-      final timeB = DateFormat('HH:mm').parse(b['time']);
-      return timeA.compareTo(timeB);
-    });
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)?.updateMelange ?? 'Modifier le Mélange'),
+    final isWebLayout = MediaQuery.of(context).size.width >= 600;
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final canPop = await _onBackPressed();
+        if (canPop && context.mounted) {
+          Navigator.pop(context);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: Text(
+            AppLocalizations.of(context)!.updateMelange ?? 'Modifier le Mélange',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: isWebLayout ? 24 : 20,
+            ),
+          ),
+          backgroundColor: const Color(0xFFFB8C00),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => _onBackPressed().then((canPop) {
+              if (canPop) Navigator.pop(context);
+            }),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.save, color: Colors.white),
+              onPressed: _updateMelange,
+            ),
+          ],
+        ),
+        body: isLoading
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFFFB8C00)))
+            : isWebLayout
+                ? buildFromWeb(context)
+                : buildFromMobile(context),
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    // Date input
-                    TextFormField(
-                      controller: _dateController,
-                      decoration: InputDecoration(
-                        labelText: AppLocalizations.of(context)?.day ?? 'Jour',
-                        suffixIcon: const Icon(Icons.calendar_today),
-                      ),
-                      readOnly: true,
-                      onTap: () => _selectDate(context),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return AppLocalizations.of(context)?.pleaseSelectDate ??
-                              'Veuillez sélectionner une date';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    // Time input
-                    TextFormField(
-                      controller: _timeController,
-                      decoration: InputDecoration(
-                        labelText: AppLocalizations.of(context)?.time ?? 'Heure',
-                        suffixIcon: const Icon(Icons.access_time),
-                      ),
-                      readOnly: true,
-                      onTap: () => _selectTime(context),
-                    ),
-                    const SizedBox(height: 16),
-                    // Select products button
-                    ElevatedButton(
-                      onPressed: _selectProducts,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB),
-                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        AppLocalizations.of(context)?.selectProducts ?? 'Sélectionner des produits',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Display selected products with quantity inputs
-                    if (selectedProducts.isNotEmpty)
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: selectedProducts.length,
-                        itemBuilder: (context, index) {
-                          final product = selectedProducts[index];
-                          return Card(
-                            margin: const EdgeInsets.symmetric(vertical: 8),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                children: [
-                                  // Product image
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: CachedNetworkImage(
-                                      imageUrl: product.picture.isNotEmpty
-                                          ? ApiConfig.changePathImage(product.picture)
-                                          : '',
-                                      width: 60,
-                                      height: 60,
-                                      fit: BoxFit.cover,
-                                      placeholder: (context, url) => const Center(
-                                        child: CircularProgressIndicator(
-                                          color: Color(0xFFFB8C00),
-                                        ),
-                                      ),
-                                      errorWidget: (context, url, error) => Container(
-                                        color: Colors.grey[300],
-                                        child: const Icon(Icons.error, color: Colors.grey),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  // Product name
-                                  Expanded(
-                                    child: Text(
-                                      product.name,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                  // Quantity input
-                                  SizedBox(
-                                    width: 100,
-                                    child: TextFormField(
-                                      controller: quantityControllers[product.id],
-                                      keyboardType: const TextInputType.numberWithOptions(decimal: false),
-                                      decoration: InputDecoration(
-                                        labelText: AppLocalizations.of(context)?.quantity ?? 'Quantité',
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                      ),
-                                      onChanged: (value) {
-                                        final quantity = double.tryParse(value) ?? 0.0;
-                                        setState(() {
-                                          quantities[product.id] = quantity;
-                                        });
-                                      },
-                                      validator: (value) {
-                                        final quantity = double.tryParse(value ?? '0') ?? 0.0;
-                                        if (quantity <= 0) {
-                                          return AppLocalizations.of(context)?.quantityMustBePositive ?? 'Doit être supérieur à 0';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    const SizedBox(height: 16),
-                    // Add to work list button
-                    ElevatedButton(
-                      onPressed: _addWorkEntry,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB),
-                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        AppLocalizations.of(context)?.addToMelange ?? 'Ajouter au mélange',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Work list display
-                    Text(
-                      AppLocalizations.of(context)?.currentWorkList ?? 'Work list actuelle:',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: sortedWorkList.length,
-                      itemBuilder: (context, index) {
-                        final work = sortedWorkList[index];
-                        final products = work['products'] as List<Map<String, dynamic>>;
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Display the time
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      '${AppLocalizations.of(context)?.time ?? 'Heure'}: ${work['time']}',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete, color: Colors.red),
-                                      onPressed: () => _removeWorkEntry(index),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                // Display each product's name and quantity
-                                ...products.map((productEntry) {
-                                  final productId = productEntry['product_id'] as int;
-                                  final quantity = productEntry['quantity'] as double;
-                                  final product = allWorkProducts.firstWhere(
-                                    (p) => p.id == productId,
-                                    orElse: () => Product(
-                                      id: productId,
-                                      name: 'Unknown Product',
-                                      picture: '',
-                                      bakeryId: 0,
-                                      price: 0.0,
-                                      wholesalePrice: 0.0,
-                                      type: '',
-                                      cost: '0',
-                                      enable: 1,
-                                      reelQuantity: 0,
-                                      createdAt: DateTime.now(),
-                                      updatedAt: DateTime.now(),
-                                      primaryMaterials: [],
-                                    ),
-                                  );
+    );
+  }
 
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          product.name,
-                                          style: const TextStyle(fontSize: 14),
-                                        ),
-                                        Text(
-                                          '${AppLocalizations.of(context)?.quantity ?? 'Quantité'}: ${quantity.toStringAsFixed(0)}',
-                                          style: const TextStyle(fontSize: 14),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    // Update button
-                    ElevatedButton(
-                      onPressed: isLoading ? null : _updateMelange,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFB8C00),
-                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        AppLocalizations.of(context)?.update ?? 'Mettre à jour',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ),
+  Widget buildFromMobile(BuildContext context) {
+    final sortedWorkList = List<Map<String, dynamic>>.from(workList)..sort(_sortWorkList);
+
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Center(child: _buildDateInput(isWeb: false)),
+                const SizedBox(height: 16),
+                Center(child: _buildTimeInput(isWeb: false)),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Expanded(child: _buildSelectProductsButton(isWeb: false)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildAddToMelangeButton(isWeb: false)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildUpdateButton(isWeb: false)),
                   ],
                 ),
-              ),
+                const SizedBox(height: 16),
+                if (selectedProducts.isNotEmpty) ...[
+                  Center(child: _buildProductList(isWeb: false)),
+                ],
+                const SizedBox(height: 16),
+                Center(child: _buildWorkListTitle(isWeb: false)),
+                Center(child: _buildWorkList(sortedWorkList, isWeb: false)),
+              ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget buildFromWeb(BuildContext context) {
+    final sortedWorkList = List<Map<String, dynamic>>.from(workList)..sort(_sortWorkList);
+
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Center(child: _buildDateInput(isWeb: true)),
+                const SizedBox(height: 24),
+                Center(child: _buildTimeInput(isWeb: true)),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Expanded(child: _buildSelectProductsButton(isWeb: true)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildAddToMelangeButton(isWeb: true)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildUpdateButton(isWeb: true)),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                if (selectedProducts.isNotEmpty) ...[
+                  Center(child: _buildProductList(isWeb: true)),
+                ],
+                const SizedBox(height: 24),
+                Center(child: _buildWorkListTitle(isWeb: true)),
+                Center(child: _buildWorkList(sortedWorkList, isWeb: true)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  int _sortWorkList(Map<String, dynamic> a, Map<String, dynamic> b) {
+    final timeA = DateFormat('HH:mm').parse(a['time']);
+    final timeB = DateFormat('HH:mm').parse(b['time']);
+    return timeA.compareTo(timeB);
+  }
+
+  Widget _buildDateInput({required bool isWeb}) {
+    return Container(
+      width: isWeb ? 400 : double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: _dateController,
+        decoration: InputDecoration(
+          labelText: AppLocalizations.of(context)!.day ?? 'Jour',
+          suffixIcon: const Icon(Icons.calendar_today, color: Colors.grey),
+          border: const OutlineInputBorder(borderSide: BorderSide.none),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+        readOnly: true,
+        onTap: () => _selectDate(context),
+        validator: (value) =>
+            value == null || value.isEmpty ? AppLocalizations.of(context)!.requiredField ?? 'Champ requis' : null,
+        style: TextStyle(fontSize: isWeb ? 16 : 14),
+      ),
+    );
+  }
+
+  Widget _buildTimeInput({required bool isWeb}) {
+    return Container(
+      width: isWeb ? 400 : double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: _timeController,
+        decoration: InputDecoration(
+          labelText: AppLocalizations.of(context)!.time ?? 'Heure',
+          suffixIcon: const Icon(Icons.access_time, color: Colors.grey),
+          border: const OutlineInputBorder(borderSide: BorderSide.none),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+        readOnly: true,
+        onTap: () => _selectTime(context),
+        style: TextStyle(fontSize: isWeb ? 16 : 14),
+      ),
+    );
+  }
+
+  Widget _buildProductList({required bool isWeb}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.all(isWeb ? 16.0 : 8.0),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: selectedProducts.length,
+        separatorBuilder: (context, index) => const Divider(height: 8),
+        itemBuilder: (context, index) {
+          final product = selectedProducts[index];
+          return Container(
+            margin: EdgeInsets.symmetric(vertical: 4.0, horizontal: isWeb ? 8.0 : 4.0),
+            padding: EdgeInsets.all(isWeb ? 12.0 : 8.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: CachedNetworkImage(
+                    imageUrl: product.picture.isNotEmpty ? ApiConfig.changePathImage(product.picture) : '',
+                    width: isWeb ? 80 : 60,
+                    height: isWeb ? 80 : 60,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => const Center(
+                      child: CircularProgressIndicator(color: Color(0xFFFB8C00)),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.error, color: Colors.grey),
+                    ),
+                    maxWidthDiskCache: isWeb ? 160 : 120,
+                  ),
+                ),
+                SizedBox(width: isWeb ? 24 : 16),
+                Expanded(
+                  child: Text(
+                    product.name,
+                    style: TextStyle(
+                      fontSize: isWeb ? 18 : 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: isWeb ? 120 : 100,
+                  child: TextFormField(
+                    controller: quantityControllers[product.id],
+                    keyboardType: const TextInputType.numberWithOptions(decimal: false),
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.quantity ?? 'Quantité',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    ),
+                    style: TextStyle(fontSize: isWeb ? 16 : 14),
+                    onChanged: (value) {
+                      final quantity = double.tryParse(value) ?? 0.0;
+                      if (quantity >= 0) {
+                        setState(() {
+                          quantities[product.id] = quantity;
+                        });
+                      }
+                    },
+                    validator: (value) {
+                      final quantity = double.tryParse(value ?? '0') ?? 0.0;
+                      if (quantity <= 0) {
+                        return AppLocalizations.of(context)!.quantityMustBePositive ?? 'Doit être > 0';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSelectProductsButton({required bool isWeb}) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: _selectProducts,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2563EB),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Text(
+          AppLocalizations.of(context)!.selectProducts ?? 'Sélectionner des produits',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: isWeb ? 16 : 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddToMelangeButton({required bool isWeb}) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: _addWorkEntry,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2563EB),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Text(
+          AppLocalizations.of(context)!.addToMelange ?? 'Ajouter au mélange',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: isWeb ? 16 : 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUpdateButton({required bool isWeb}) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: isLoading ? null : _updateMelange,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFB8C00),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Text(
+          AppLocalizations.of(context)!.update ?? 'Mettre à jour',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: isWeb ? 16 : 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWorkListTitle({required bool isWeb}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.all(isWeb ? 16.0 : 12.0),
+      child: Text(
+        AppLocalizations.of(context)!.currentWorkList ?? 'Work list actuelle:',
+        style: TextStyle(
+          fontSize: isWeb ? 18 : 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWorkList(List<Map<String, dynamic>> sortedWorkList, {required bool isWeb}) {
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: sortedWorkList.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final work = sortedWorkList[index];
+        final products = work['products'] as List<Map<String, dynamic>>;
+
+        return Container(
+          margin: EdgeInsets.symmetric(vertical: 4.0, horizontal: isWeb ? 8.0 : 4.0),
+          padding: EdgeInsets.all(isWeb ? 12.0 : 8.0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.2),
+                spreadRadius: 1,
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${AppLocalizations.of(context)!.time ?? 'Heure'}: ${work['time']}',
+                    style: TextStyle(
+                      fontSize: isWeb ? 18 : 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _removeWorkEntry(index),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ...products.asMap().entries.map((productEntry) {
+                final productIndex = productEntry.key;
+                final productData = productEntry.value;
+                final productId = productData['product_id'] as int;
+                final quantity = productData['quantity'] as double;
+                final product = allWorkProducts.firstWhere(
+                  (p) => p.id == productId,
+                  orElse: () => Product(
+                    id: productId,
+                    name: 'Produit inconnu',
+                    picture: '',
+                    bakeryId: 0,
+                    price: 0.0,
+                    wholesalePrice: 0.0,
+                    type: '',
+                    cost: '0',
+                    enable: 1,
+                    reelQuantity: 0,
+                    createdAt: DateTime.now(),
+                    updatedAt: DateTime.now(),
+                    primaryMaterials: [],
+                  ),
+                );
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: CachedNetworkImage(
+                              imageUrl: ApiConfig.changePathImage(product.picture),
+                              width: isWeb ? 60 : 50,
+                              height: isWeb ? 60 : 50,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => const Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFFFB8C00),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                color: Colors.grey[300],
+                                child: const Icon(Icons.error, color: Colors.grey),
+                              ),
+                              maxWidthDiskCache: isWeb ? 120 : 100,
+                            ),
+                          ),
+                          const SizedBox(width: 15),
+                          Text(
+                            product.name,
+                            style: TextStyle(fontSize: isWeb ? 16 : 14),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            '${AppLocalizations.of(context)!.quantity ?? 'Quantité'}: ${quantity.toStringAsFixed(0)}',
+                            style: TextStyle(fontSize: isWeb ? 16 : 14),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () => _showEditQuantityDialog(index, productIndex, productId, quantity),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              setState(() {
+                                final updatedProducts = List<Map<String, dynamic>>.from(products);
+                                updatedProducts.removeAt(productIndex);
+                                if (updatedProducts.isEmpty) {
+                                  workList.removeAt(index);
+                                } else {
+                                  workList[index]['products'] = updatedProducts;
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEditQuantityDialog(int workIndex, int productIndex, int productId, double currentQuantity) {
+    final TextEditingController quantityController = TextEditingController(text: currentQuantity.toStringAsFixed(0));
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(AppLocalizations.of(context)!.editQuantity ?? 'Modifier la Quantité'),
+        content: TextFormField(
+          controller: quantityController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: false),
+          decoration: InputDecoration(
+            labelText: AppLocalizations.of(context)!.quantity ?? 'Quantité',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          validator: (value) {
+            final quantity = double.tryParse(value ?? '0') ?? 0.0;
+            if (quantity <= 0) {
+              return AppLocalizations.of(context)!.quantityMustBePositive ?? 'Doit être > 0';
+            }
+            return null;
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(AppLocalizations.of(context)!.cancel ?? 'Annuler'),
+          ),
+          TextButton(
+            onPressed: () {
+              final newQuantity = double.tryParse(quantityController.text) ?? 0.0;
+              if (newQuantity <= 0) {
+                Customsnackbar().showErrorSnackbar(
+                  context,
+                  AppLocalizations.of(context)!.quantityMustBePositive ?? 'La quantité doit être supérieure à 0',
+                );
+                return;
+              }
+              setState(() {
+                final updatedProducts = List<Map<String, dynamic>>.from(workList[workIndex]['products']);
+                updatedProducts[productIndex]['quantity'] = newQuantity;
+                workList[workIndex]['products'] = updatedProducts;
+              });
+              Navigator.pop(context);
+            },
+            child: Text(AppLocalizations.of(context)!.save ?? 'Enregistrer'),
+          ),
+        ],
+      ),
     );
   }
 }

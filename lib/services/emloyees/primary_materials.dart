@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
@@ -97,7 +98,6 @@ class EmployeesPrimaryMaterialService {
     String minQuantity,
     String maxQuantity,
     String image,
-    String cost,
     BuildContext context,
   ) async {
     try {
@@ -119,7 +119,6 @@ class EmployeesPrimaryMaterialService {
       request.fields['unit'] = unit;
       request.fields['min_quantity'] = minQuantity;
       request.fields['max_quantity'] = maxQuantity;
-      request.fields['cost'] = cost;
 
 
       if (image.isNotEmpty) {
@@ -164,7 +163,7 @@ class EmployeesPrimaryMaterialService {
             bool refreshed = await AuthService().refreshToken();
             if (refreshed) {
               return addPrimaryMaterial(
-                  name, unit, minQuantity, maxQuantity, image, cost, context);
+                  name, unit, minQuantity, maxQuantity, image, context);
             } else {
               await AuthService().expaildtokent(context);
             }
@@ -176,7 +175,7 @@ class EmployeesPrimaryMaterialService {
           bool refreshed = await AuthService().refreshToken();
           if (refreshed) {
             return addPrimaryMaterial(
-                name, unit, minQuantity, maxQuantity, image, cost, context);
+                name, unit, minQuantity, maxQuantity, image, context);
           } else {
             await AuthService().expaildtokent(context);
           }
@@ -197,7 +196,6 @@ class EmployeesPrimaryMaterialService {
     String unit,
     String minQuantity,
     String maxQuantity,
-    String cost,
     String image,
     String oldPicture,
     BuildContext context,
@@ -221,7 +219,6 @@ class EmployeesPrimaryMaterialService {
       request.fields['unit'] = unit;
       request.fields['min_quantity'] = minQuantity;
       request.fields['max_quantity'] = maxQuantity;
-      request.fields['cost'] = cost;
 
       if (oldPicture != image && image.isNotEmpty) {
         if (kIsWeb) {
@@ -261,7 +258,7 @@ class EmployeesPrimaryMaterialService {
             bool refreshed = await AuthService().refreshToken();
             if (refreshed) {
               return updatePrimaryMaterial(id, name, unit, minQuantity,
-                  maxQuantity, cost, image, oldPicture, context);
+                  maxQuantity, image, oldPicture, context);
             } else {
               await AuthService().expaildtokent(context);
             }
@@ -277,7 +274,7 @@ class EmployeesPrimaryMaterialService {
           bool refreshed = await AuthService().refreshToken();
           if (refreshed) {
             return updatePrimaryMaterial(id, name, unit, minQuantity,
-                maxQuantity, cost, image, oldPicture, context);
+                maxQuantity, image, oldPicture, context);
           } else {
             await AuthService().expaildtokent(context);
           }
@@ -305,6 +302,9 @@ class EmployeesPrimaryMaterialService {
     required BuildContext context,
   }) async {
     try {
+
+
+      // Retrieve token
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('auth_token');
 
@@ -329,27 +329,46 @@ class EmployeesPrimaryMaterialService {
       request.fields['justification'] = justification;
       request.fields['action'] = action;
       if (priceFacture != null) {
-        request.fields['price_facture'] = priceFacture.toString();
+        request.fields['price_facture'] = priceFacture.toStringAsFixed(3);
       }
 
       // Add image file (if provided)
-      if (factureImage != null) {
-        // For mobile: use file path
-        request.files.add(await http.MultipartFile.fromPath(
-          'facture_image',
-          factureImage,
-        ));
-      } else if (webImage != null) {
-        // For web: use byte data
+      if (kIsWeb && webImage != null) {
+        // Web: Use webImage (Uint8List)
         request.files.add(http.MultipartFile.fromBytes(
           'facture_image',
           webImage,
-          filename: 'facture_image.jpg',
+          filename: 'facture_image.${webImage.length > 2 && webImage[0] == 0xFF && webImage[1] == 0xD8 ? 'jpg' : 'png'}',
+          contentType: MediaType('image', webImage.length > 2 && webImage[0] == 0xFF && webImage[1] == 0xD8 ? 'jpeg' : 'png'),
         ));
+      } else if (!kIsWeb && factureImage != null) {
+        // Mobile: Use factureImage (file path)
+        try {
+          final file = File(factureImage);
+          if (!await file.exists()) {
+            Customsnackbar().showErrorSnackbar(
+                context, AppLocalizations.of(context)!.invalidImage);
+            return;
+          }
+          request.files.add(await http.MultipartFile.fromPath(
+            'facture_image',
+            factureImage,
+            contentType: MediaType('image', factureImage.endsWith('.png') ? 'png' : 'jpeg'),
+          ));
+        } catch (e) {
+          Customsnackbar().showErrorSnackbar(
+              context, '${AppLocalizations.of(context)!.invalidImage}: $e');
+          return;
+        }
       }
 
       // Send the request
-      final streamedResponse = await request.send();
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Request timed out');
+        },
+      );
       final response = await http.Response.fromStream(streamedResponse);
 
       switch (response.statusCode) {
@@ -420,7 +439,6 @@ class EmployeesPrimaryMaterialService {
           context, '${AppLocalizations.of(context)!.errorOccurred}: $e');
     }
   }
-
   Future<void> deletePrimaryMaterial(int id, BuildContext context) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -543,7 +561,7 @@ class EmployeesPrimaryMaterialService {
       final token = prefs.getString('auth_token');
       if (token == null) {
         Customsnackbar().showErrorSnackbar(
-            context, AppLocalizations.of(context)!.tokenNotFound ?? 'Token not found');
+            context, AppLocalizations.of(context)!.tokenNotFound );
         return [];
       }
 
@@ -568,7 +586,7 @@ class EmployeesPrimaryMaterialService {
       return [];
     } catch (e) {
       Customsnackbar().showErrorSnackbar(
-          context, AppLocalizations.of(context)!.networkError ?? 'Network error');
+          context, AppLocalizations.of(context)!.networkError);
       return [];
     }
   }

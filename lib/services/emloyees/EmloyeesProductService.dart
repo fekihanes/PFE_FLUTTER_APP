@@ -215,4 +215,36 @@ class EmloyeesProductService {
       rethrow;
     }
   }
+
+Future<List<Map<String, dynamic>>> fetchProductSalesByDay(String productId, {String? bakeryId}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    final bakeryId = prefs.getString('my_bakery')?.isNotEmpty == true
+        ? prefs.getString('my_bakery')
+        : prefs.getString('bakery_id');
+
+    if (token == null || bakeryId == null) {
+      throw Exception('No authentication token or bakery ID found');
+    }
+
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}manager/bakery/getProductSalesByDay'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'bakery_id': bakeryId,
+        'product_id': productId,
+      }),
+    ).timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 200) {
+      return (jsonDecode(response.body) as List).cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('API Error: ${response.statusCode} - ${response.body}');
+    }
+  }
+
 }

@@ -476,7 +476,7 @@ class _special_customerPasseCommandeState
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             Text(
-              "${total.toStringAsFixed(2)} ${localization.dt}",
+              "${total.toStringAsFixed(3)} ${localization.dt}",
               style: const TextStyle(
                   fontSize: 18,
                   color: Colors.black,

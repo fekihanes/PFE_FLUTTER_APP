@@ -28,7 +28,6 @@ class _UpdateprimaryMaterialPageState extends State<UpdateprimaryMaterialPage> {
   late TextEditingController _nameController;
   late TextEditingController _quantity_max_Controller=TextEditingController();
   late TextEditingController _quantity_min_Controller =TextEditingController();
-  late TextEditingController _cost_Controller =TextEditingController();
   String? _isUnitSelected ;
   String? _oldImage;
   String? _imagePath;
@@ -44,7 +43,6 @@ class _UpdateprimaryMaterialPageState extends State<UpdateprimaryMaterialPage> {
     _nameController = TextEditingController(text: widget.primaryMaterial.name);
     _quantity_max_Controller = TextEditingController(text: widget.primaryMaterial.maxQuantity.toString());
     _quantity_min_Controller = TextEditingController(text: widget.primaryMaterial.minQuantity.toString());
-    _cost_Controller = TextEditingController(text: widget.primaryMaterial.cost.toString());
     _isUnitSelected = widget.primaryMaterial.unit;
     _oldImage = widget.primaryMaterial.image;
     _imagePath = widget.primaryMaterial.image;
@@ -70,7 +68,6 @@ class _UpdateprimaryMaterialPageState extends State<UpdateprimaryMaterialPage> {
         _isUnitSelected ?? '',
         _quantity_min_Controller.text,
         _quantity_max_Controller.text,
-        _cost_Controller.text,
         image,
         _oldImage!,
         context,
@@ -107,35 +104,11 @@ class _UpdateprimaryMaterialPageState extends State<UpdateprimaryMaterialPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CustomTextField(
-                  controller: _cost_Controller,
-                  labelText: AppLocalizations.of(context)!.cost,
-                  icon: Icons.monetization_on_outlined,
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*\.?\d{0,2}')), // max 2 décimales
-                  ],
-
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return AppLocalizations.of(context)!.please_enter_a_cost;
-                    }
-                    final cost = double.tryParse(value);
-                    if (cost == null) {
-                      return AppLocalizations.of(context)!.please_enter_a_valid_number;
-                    }
-                    if (cost <= 0) {
-                      return AppLocalizations.of(context)!.cost_must_be_greater_than_zero;
-                    }
-                    return null;
-                  },
-                ),
-                SizedBox(height: 20),
+SizedBox(height: 20),
                 CustomTextField(
                   controller: _nameController,
                   labelText: AppLocalizations.of(context)!.primary_material_Name,
-                  icon: Icons.shopping_cart,
+                  icon: Icon(Icons.shopping_cart),
                   validator: (value) {
                     if (value!.isEmpty) {
                       return AppLocalizations.of(context)!.requiredField;
@@ -148,7 +121,7 @@ class _UpdateprimaryMaterialPageState extends State<UpdateprimaryMaterialPage> {
                   controller: _quantity_max_Controller,
                   labelText:
                       AppLocalizations.of(context)!.primary_material_max_quantity,
-                  icon: FontAwesomeIcons.cubes,
+                  icon: Icon(FontAwesomeIcons.cubes),
                   keyboardType: TextInputType.number,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -166,7 +139,7 @@ class _UpdateprimaryMaterialPageState extends State<UpdateprimaryMaterialPage> {
                   controller: _quantity_min_Controller,
                   labelText:
                       AppLocalizations.of(context)!.primary_material_min_quantity,
-                  icon: FontAwesomeIcons.cubes,
+                  icon: Icon(FontAwesomeIcons.cubes),
                   keyboardType: TextInputType.number,
                   validator: (value) {
                     if (value == null || value.isEmpty) {

@@ -92,5 +92,7 @@
 	<array>
 		<string>http</string>
 	</array>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+<string>Allow access to save images to your photo library</string>
 </dict>
 </plist>

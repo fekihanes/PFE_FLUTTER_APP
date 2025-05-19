@@ -43,7 +43,7 @@ class _NotificationIconState extends State<NotificationIcon> {
         children: [
           IconButton(
               icon: const Icon(Icons.notifications,
-                  color: Colors.black, size: 30),
+                  color: Colors.white, size: 30),
               padding: EdgeInsets.zero, // Supprime le padding par défaut
               onPressed: () => {
                     Navigator.of(context).push(MaterialPageRoute(

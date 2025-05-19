@@ -203,12 +203,19 @@ class WebsocketService {
 
       if (event == 'new.notification' || event == 'App\\Events\\NewNotificationEvent') {
         final commandeId = data['commande_id'];
-        final String messageText = data['description']?.toString() ?? data['message']?.toString() ?? 'Notification sans description';
+         String messageText =''; data['description']?.toString() ?? data['message']?.toString() ?? 'Notification sans description';
         final int bakeryId = int.tryParse(data['bakery_id']?.toString() ?? '0') ?? 0;
 
         print('📩 Nouvelle notification: $messageText (commandeId: $commandeId, bakeryId: $bakeryId)');
 
-        final String title = commandeId == null ? 'Étape de la Boulangerie' : 'Nouvelle Commande #$commandeId';
+         String title ='';
+        if(commandeId == null){
+            title = 'Étape de la Boulangerie';
+            messageText = data['description']!.toString()?? data['message']?.toString() ?? 'Notification sans description';
+        } else{
+            title = 'Commande #$commandeId';
+            messageText = data['message']!.toString();
+        }
 
         await BackgroundNotificationService.showNotification(
           id: DateTime.now().millisecondsSinceEpoch ~/ 1000,

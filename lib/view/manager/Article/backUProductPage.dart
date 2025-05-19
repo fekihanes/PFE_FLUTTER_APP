@@ -87,11 +87,11 @@ class _backUProductPageState extends State<backUProductPage> {
         title: Text(
           AppLocalizations.of(context)!.return_the_product,
           style: const TextStyle(
-              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
+              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFB8C00),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
                 Navigator.pushReplacement(
                 context,
@@ -102,18 +102,27 @@ class _backUProductPageState extends State<backUProductPage> {
           },
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildContproduct(),
-            const SizedBox(height: 20),
-            _buildInput(),
-            const SizedBox(height: 20),
-            _buildListproduct(),
-            _buildPagination(), // Added pagination
-          ],
+      body: Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildContproduct(),
+              const SizedBox(height: 20),
+              _buildInput(),
+              const SizedBox(height: 20),
+              _buildListproduct(),
+              _buildPagination(), // Added pagination
+            ],
+          ),
         ),
       ),
     );
@@ -270,7 +279,7 @@ class _backUProductPageState extends State<backUProductPage> {
                         ],
                       ),
                       Text(
-                        "${AppLocalizations.of(context)!.productPrice}: ${product.price.toStringAsFixed(2)} DT",
+                        "${AppLocalizations.of(context)!.productPrice}: ${product.price.toStringAsFixed(3)} DT",
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -278,7 +287,7 @@ class _backUProductPageState extends State<backUProductPage> {
                         ),
                       ),
                       Text(
-                        "${AppLocalizations.of(context)!.productwholesale_price}: ${product.wholesalePrice.toStringAsFixed(2)} DT",
+                        "${AppLocalizations.of(context)!.productwholesale_price}: ${product.wholesalePrice.toStringAsFixed(3)} DT",
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,

@@ -107,7 +107,6 @@ class ProductsService {
     String name,
     String price,
     String type,
-    String cost,
     String wholesale_price,
     String picture,
     List<Map<String, dynamic>> primaryMaterials,
@@ -132,7 +131,6 @@ class ProductsService {
       request.fields['price'] = price;
       request.fields['wholesale_price'] = wholesale_price;
       request.fields['type'] = type;
-      request.fields['cost'] = cost;
       request.fields['primary_materials'] = jsonEncode(primaryMaterials);
 
       if (picture.isNotEmpty) {
@@ -174,7 +172,7 @@ class ProductsService {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
           return AddProduct(
-              name, price, type, cost, wholesale_price, picture, primaryMaterials, context);
+              name, price, type, wholesale_price, picture, primaryMaterials, context);
         } else {
           await AuthService().expaildtokent(context);
         }
@@ -185,7 +183,7 @@ class ProductsService {
           bool refreshed = await AuthService().refreshToken();
           if (refreshed) {
             return AddProduct(
-                name, price, type, cost, wholesale_price, picture, primaryMaterials, context);
+                name, price, type, wholesale_price, picture, primaryMaterials, context);
           } else {
             await AuthService().expaildtokent(context);
           }
@@ -207,7 +205,6 @@ class ProductsService {
     String name,
     String price,
     String type,
-    String cost,
     String wholesale_price,
     String picture,
     String oldPicture,
@@ -228,13 +225,16 @@ class ProductsService {
           'POST', Uri.parse('${baseUrlManager_articles}update_articles/$id'));
       request.headers['Authorization'] = 'Bearer $token';
       request.headers['Accept'] = 'application/json';
-
       request.fields['name'] = name;
       request.fields['price'] = price;
       request.fields['type'] = type;
-      request.fields['cost'] = cost;
       request.fields['wholesale_price'] = wholesale_price;
-      request.fields['primary_materials'] = jsonEncode(primaryMaterials);
+            request.fields['primary_materials'] = jsonEncode(primaryMaterials.map((material) {
+        return {
+          'material_id': material['material_id'],
+          'quantity': material['quantity'].toDouble(), // Ensure double precision
+        };
+      }).toList());
 
       if (oldPicture != picture) {
         if (picture.isNotEmpty) {
@@ -276,7 +276,7 @@ class ProductsService {
       } else if (response.statusCode == 405) {
         bool refreshed = await AuthService().refreshToken();
         if (refreshed) {
-          return updateProduct(id, name, price, type, cost, wholesale_price, picture,
+          return updateProduct(id, name, price, type, wholesale_price, picture,
               oldPicture, primaryMaterials, context);
         } else {
           await AuthService().expaildtokent(context);
@@ -287,7 +287,7 @@ class ProductsService {
         if (message == 'Unauthenticated.') {
           bool refreshed = await AuthService().refreshToken();
           if (refreshed) {
-            return updateProduct(id, name, price, type, cost, wholesale_price,
+            return updateProduct(id, name, price, type, wholesale_price,
                 picture, oldPicture, primaryMaterials, context);
           } else {
             await AuthService().expaildtokent(context);

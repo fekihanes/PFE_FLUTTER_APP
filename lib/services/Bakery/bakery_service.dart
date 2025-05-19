@@ -331,7 +331,7 @@ class BakeryService {
 
   Future<double> getdeliveryFee(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-    String? idBakery = prefs.getString('my_bakery');
+    String? idBakery = prefs.getString('my_bakery')==''?prefs.getString('bakery_id'):prefs.getString('my_bakery');
     String? token = prefs.getString('auth_token');
 
     if (token == null) {
@@ -389,6 +389,56 @@ return _safeParseDouble(deliveryFee) ?? 0.0;
     }
     return null;
   }
+    Future<Bakery?> getBakerybyId(BuildContext context,int idBakery) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('auth_token');
+   
 
+      if (token == null ) {
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.tokenNotFound);
+        return null;
+      }
+
+      final response = await _client.get(
+        Uri.parse('${publicbaseUrl}get_bakeries_by_id/$idBakery'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return Bakery.fromJson(jsonDecode(response.body));
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        final jsonResponse = jsonDecode(response.body);
+        String message = jsonResponse['message'] ?? 'Unauthenticated.';
+
+        if (message == 'Unauthenticated.') {
+          bool refreshed = await AuthService().refreshToken();
+          if (refreshed) {
+            return getBakerybyId(context, idBakery); // Réessaye avec le nouveau token
+          } else {
+            await AuthService().expaildtokent(context);
+            return null;
+          }
+        } else {
+          Customsnackbar().showErrorSnackbar(context, message);
+          return null;
+        }
+      } else {
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.errorOccurred);
+        return null;
+      }
+    } catch (e) {
+      Customsnackbar().showErrorSnackbar(
+          context, AppLocalizations.of(context)!.errorOccurred);
+      return null;
+    }
+  }
+
+ 
 }
    

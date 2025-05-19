@@ -39,6 +39,7 @@ class _PageFindBaheryState extends State<PageFindBahery> {
   String? subAdministrativeArea;
   String? administrativeArea;
   Timer? _debounceTimer;
+  late bool isWebLayout;
 
   @override
   void initState() {
@@ -124,6 +125,10 @@ class _PageFindBaheryState extends State<PageFindBahery> {
     );
   }
 
+  Future<bool> _onBackPressed() async {
+    return true;
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -138,137 +143,117 @@ class _PageFindBaheryState extends State<PageFindBahery> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          AppLocalizations.of(context)!.bakeryManagement,
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: MediaQuery.of(context).size.width < 600 ? 18 : 20,
-          ),
-        ),
-      ),
-      drawer: CustomDraweruser(),
-      body: isBigLoading
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(color: Color(0xFFFB8C00)),
-                  const SizedBox(height: 20),
-                  Text(AppLocalizations.of(context)!.loadingMessage),
-                ],
-              ),
-            )
-          : LayoutBuilder(
-              builder: (context, constraints) {
-                return Container(
-                  color: const Color(0xFFE5E7EB),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: SingleChildScrollView(
-                          padding: EdgeInsets.all(32),
-                          // padding: EdgeInsets.all(constraints.maxWidth * 0.04),
-                          child: Column(
-                            children: [
-                              _buildContbakeries(),
-                              SizedBox(height: constraints.maxHeight * 0.015),
-                              _buildFormSearch(),
-                              SizedBox(height: constraints.maxHeight * 0.015),
-                              _buildbakeryList(constraints),
-                            ],
-                          ),
-                        ),
-                      ),
-                      _buildPagination(),
-                    ],
-                  ),
-                );
-              },
-            ),
-    );
-  }
-
   Widget _buildbakeryList(BoxConstraints constraints) {
     if (isLoading) {
-      return const Center(
-        heightFactor: 15,
-        child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFB8C00))),
+      return Container(
+        height: constraints.maxHeight * 0.5,
+        margin: EdgeInsets.symmetric(horizontal: constraints.maxWidth * 0.03),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+            ),
+          ],
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFB8C00)),
+          ),
+        ),
       );
     }
 
     if (bakeries.isEmpty) {
-      return Center(
-        heightFactor: 20,
-        child: Text(
-          AppLocalizations.of(context)!.nobakeryFound,
-          style: TextStyle(
-            fontSize: constraints.maxWidth < 600 ? 16 : 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey,
+      return Container(
+        height: constraints.maxHeight * 0.5,
+        margin: EdgeInsets.symmetric(horizontal: constraints.maxWidth * 0.03),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            AppLocalizations.of(context)!.nobakeryFound,
+            style: TextStyle(
+              fontSize: constraints.maxWidth > 1200
+                  ? 20
+                  : (constraints.maxWidth > 600 ? 18 : 16),
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
           ),
         ),
       );
     }
 
     int crossAxisCount;
-    double childAspectRatio;
-
-    // Déterminer le crossAxisCount en fonction de la largeur de l'écran
     if (constraints.maxWidth < 600) {
-      crossAxisCount = 1; // Téléphone
-      childAspectRatio =
-          (constraints.maxWidth / 1) / (constraints.maxHeight * 0.63);
+      crossAxisCount = 1;
     } else if (constraints.maxWidth < 900) {
-      crossAxisCount = 2; // Tablette
-      childAspectRatio =
-          (constraints.maxWidth / 2) / (constraints.maxHeight * 0.58);
+      crossAxisCount = 2;
     } else if (constraints.maxWidth < 1200) {
-      crossAxisCount = 3; // Web
-      childAspectRatio =
-          (constraints.maxWidth / 3) / (constraints.maxHeight * 0.6);
+      crossAxisCount = 3;
     } else {
-      crossAxisCount = 4; // TV
-      childAspectRatio =
-          (constraints.maxWidth / 4) / (constraints.maxHeight * 0.6);
+      crossAxisCount = 4;
     }
-
-    // S'assurer que le childAspectRatio reste dans des limites raisonnables
-    childAspectRatio = childAspectRatio.clamp(0.5, 1.5);
 
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.symmetric(
+        horizontal: constraints.maxWidth * 0.03,
+        vertical: constraints.maxHeight * 0.01,
+      ),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: constraints.maxWidth * 0.02,
         mainAxisSpacing: constraints.maxHeight * 0.015,
-        childAspectRatio:
-            childAspectRatio, // Utiliser la valeur calculée dynamiquement
       ),
       itemCount: bakeries.length,
       itemBuilder: (context, index) {
-        return Container(
-          padding: EdgeInsets.all(16.0),
-          // padding: EdgeInsets.all(constraints.maxWidth * 0.03),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            borderRadius: BorderRadius.circular(10),
-            color: Colors.white,
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: constraints.maxWidth < 600 ? 300 : 350,
           ),
-          child: GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) =>
-                      PageAccueilBakery(bakery: bakeries[index], products_selected: {},)),
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey),
+              borderRadius: BorderRadius.circular(10),
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                ),
+              ],
             ),
-            child: _ShowinfoBakery(bakeries[index], constraints),
+            child: GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PageAccueilBakery(
+                    bakery: bakeries[index],
+                    products_selected: {},
+                  ),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: _ShowinfoBakery(bakeries[index], constraints),
+              ),
+            ),
           ),
         );
       },
@@ -294,170 +279,172 @@ class _PageFindBaheryState extends State<PageFindBahery> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Stack(
-          children: [
-            CachedNetworkImage(
-              imageUrl: ApiConfig.changePathImage(bakery.image ?? ''),
-              width: double.infinity,
-              height: constraints.maxHeight * 0.3, // Reduced image height
-              fit: BoxFit.cover,
-              progressIndicatorBuilder: (context, url, progress) => Center(
-                child: CircularProgressIndicator(
-                  value: progress.progress,
-                  color: const Color(0xFFFB8C00),
+        Expanded(
+          flex: 3,
+          child: Stack(
+            children: [
+              CachedNetworkImage(
+                imageUrl: ApiConfig.changePathImage(bakery.image ?? ''),
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.cover,
+                progressIndicatorBuilder: (context, url, progress) => Center(
+                  child: CircularProgressIndicator(
+                    value: progress.progress,
+                    color: const Color(0xFFFB8C00),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  color: Colors.grey[200],
+                  child: Icon(
+                    Icons.store,
+                    size: constraints.maxWidth > 1200 ? 40 : (constraints.maxWidth > 600 ? 35 : 30),
+                  ),
                 ),
               ),
-              errorWidget: (context, url, error) => Container(
-                color: Colors.grey[200],
-                child: const Icon(Icons.store, size: 40), // Smaller icon
-              ),
-              imageBuilder: (context, imageProvider) => ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image(image: imageProvider, fit: BoxFit.cover),
-              ),
-            ),
-            Positioned(
-              top: 5,
-              right: 5,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 4), // Smaller padding
-                decoration: BoxDecoration(
-                  color: isOpen ? Colors.green : Colors.red,
-                  borderRadius: BorderRadius.circular(6),
-                  boxShadow: [
-                    BoxShadow(
+              Positioned(
+                top: 5,
+                right: 5,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: constraints.maxWidth > 600 ? 8 : 6,
+                    vertical: constraints.maxWidth > 600 ? 4 : 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isOpen ? Colors.green : Colors.red,
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
                         color: Colors.black.withOpacity(0.2),
                         blurRadius: 2,
-                        offset: const Offset(1, 1)),
+                        offset: const Offset(1, 1),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    isOpen ? AppLocalizations.of(context)!.open : AppLocalizations.of(context)!.closed,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: constraints.maxWidth > 600 ? 12 : 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Expanded(
+          flex: 2,
+          child: Padding(
+            padding: EdgeInsets.all(constraints.maxWidth > 600 ? 16.0 : 12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Text(
+                  bakery.name.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: constraints.maxWidth > 600 ? 14 : 12,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF795548),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (bakery.street != null && bakery.street != '')
+                  Row(
+                    children: [
+                      Icon(Icons.location_on, size: constraints.maxWidth > 600 ? 14 : 12),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          bakery.street ?? '',
+                          style: TextStyle(fontSize: constraints.maxWidth > 600 ? 12 : 10),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                Row(
+                  children: [
+                    RatingStars(
+                      value: bakery.avgRating ?? 0.0,
+                      starSize: constraints.maxWidth > 600 ? 14 : 12,
+                      starBuilder: (index, color) => Icon(Icons.star, color: color, size: constraints.maxWidth > 600 ? 14 : 12),
+                      starCount: 5,
+                      valueLabelVisibility: false,
+                      maxValue: 5,
+                      starSpacing: 1,
+                      starOffColor: const Color(0xffe7e8ea),
+                      starColor: Colors.yellow,
+                    ),
+                    const Spacer(),
+                    Flexible(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          backgroundColor: const Color(0xFFFB8C00),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: FittedBox(
+                          child: Row(
+                            children: [
+                              Icon(Icons.star, size: constraints.maxWidth > 600 ? 14 : 12, color: Colors.white),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Évaluer',
+                                style: TextStyle(fontSize: constraints.maxWidth > 600 ? 12 : 10, color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        ),
+                        onPressed: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => PageRatingBakery(bakery: bakery)),
+                          );
+                          _initializeData();
+                        },
+                      ),
+                    ),
                   ],
                 ),
-                child: Text(
-                  isOpen
-                      ? AppLocalizations.of(context)!.open
-                      : AppLocalizations.of(context)!.closed,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 2,
+                  children: [
+                    _buildInfoRow(
+                      Icons.access_time,
+                      "${getOpeningHours(bakery, 'start')} - ${getOpeningHours(bakery, 'end')}",
+                      constraints,
+                    ),
+                    _buildInfoRow(
+                      Icons.location_city,
+                      '${bakery.distance?.toStringAsFixed(3)} km',
+                      constraints,
+                    ),
+                  ],
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
-        SizedBox(height: constraints.maxHeight * 0.01),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text, BoxConstraints constraints) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: constraints.maxWidth > 600 ? 14 : 12),
+        const SizedBox(width: 4),
         Text(
-          bakery.name.toUpperCase(),
-          style: TextStyle(
-            fontSize: constraints.maxWidth < 600 ? 12 : 14, // Smaller font
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF795548),
-          ),
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
-        ),
-        if (bakery.street != null && bakery.street != '')
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4.0),
-            child: Row(
-              children: [
-                const Icon(Icons.location_on,
-                    color: Colors.grey, size: 16), // Smaller icon
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    bakery.street ?? '',
-                    style: const TextStyle(
-                        fontSize: 12, color: Colors.grey), // Smaller font
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            RatingStars(
-              value: bakery.avgRating ?? 0.0,
-              starBuilder: (index, color) =>
-                  Icon(Icons.star, color: color, size: 14), // Smaller stars
-              starCount: 5,
-              starSize: 14,
-              valueLabelVisibility: false, // Hide value label to save space
-              maxValue: 5,
-              starSpacing: 1,
-              starOffColor: const Color(0xffe7e8ea),
-              starColor: Colors.yellow,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              '(${bakery.ratingsCount.toString()})',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const Spacer(),
-            ElevatedButton(
-              onPressed: () async{
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PageRatingBakery(bakery: bakery),
-                  ),
-                );
-                _initializeData();
-              },
-              child: Row(
-                children: [
-                   Icon(Icons.star,
-                      color: Colors.white, size: 14), // Smaller icon
-                   Text(
-                    'Évaluer', // Shortened text
-                    style: TextStyle(fontSize: 12, color: Colors.white),
-                  ),
-                ],
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFB8C00),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 6, vertical: 2), // Smaller button
-                // minimumSize: const Size(0, 0), // Allow smaller size
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: constraints.maxHeight * 0.005),
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.access_time,
-                    color: Colors.grey, size: 14), // Smaller icon
-                const SizedBox(width: 4),
-                Text(
-                  "${getOpeningHours(bakery, 'start') ?? '-'} - ${getOpeningHours(bakery, 'end') ?? '-'}",
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.location_city,
-                    color: Colors.grey, size: 14), // Smaller icon
-                const SizedBox(width: 4),
-                Text(
-                  '${bakery.distance?.toStringAsFixed(2) ?? '-'} km',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-          ],
+          text,
+          style: TextStyle(fontSize: constraints.maxWidth > 600 ? 12 : 10),
         ),
       ],
     );
@@ -465,8 +452,7 @@ class _PageFindBaheryState extends State<PageFindBahery> {
 
   String? getOpeningHours(Bakery bakery, String key) {
     try {
-      Map<String, dynamic> storedHours =
-          jsonDecode(bakery.openingHours);
+      Map<String, dynamic> storedHours = jsonDecode(bakery.openingHours);
       DateTime now = DateTime.now();
       String searchDay = Traductions().getEnglishDayName(now);
       late Map<String, dynamic> openingHours = {};
@@ -508,18 +494,27 @@ class _PageFindBaheryState extends State<PageFindBahery> {
     }
   }
 
-  Widget _buildPagination() {
+  Widget _buildPagination(BoxConstraints constraints) {
     List<Widget> pageLinks = [];
     Color arrowColor = const Color(0xFFFB8C00);
     Color disabledArrowColor = arrowColor.withOpacity(0.1);
 
     pageLinks.add(
       Container(
-        padding: const EdgeInsets.all(8.0),
-        margin: const EdgeInsets.symmetric(horizontal: 4.0),
+        padding: EdgeInsets.all(
+            constraints.maxWidth > 1200 ? 10.0 : (isWebLayout ? 8.0 : 6.0)),
+        margin: EdgeInsets.symmetric(
+            horizontal: constraints.maxWidth > 1200 ? 6.0 : (isWebLayout ? 4.0 : 3.0)),
         decoration: BoxDecoration(
           color: prevPageUrl != null ? arrowColor : disabledArrowColor,
           borderRadius: BorderRadius.circular(5.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+            ),
+          ],
         ),
         child: GestureDetector(
           onTap: prevPageUrl != null
@@ -528,7 +523,11 @@ class _PageFindBaheryState extends State<PageFindBahery> {
                   fetchbakeries(page: currentPage);
                 }
               : null,
-          child: const Icon(Icons.arrow_left, color: Colors.black),
+          child: Icon(Icons.arrow_left,
+              size: constraints.maxWidth > 1200
+                  ? 28
+                  : (isWebLayout ? 24 : 20),
+              color: Colors.black),
         ),
       ),
     );
@@ -536,21 +535,33 @@ class _PageFindBaheryState extends State<PageFindBahery> {
     for (int i = 1; i <= lastPage; i++) {
       if (i >= currentPage - 3 && i <= currentPage + 3) {
         pageLinks.add(
-          GestureDetector(
-            onTap: () {
-              setState(() => currentPage = i);
-              fetchbakeries(page: currentPage);
-            },
-            child: Container(
-              padding: const EdgeInsets.all(8.0),
-              margin: const EdgeInsets.symmetric(horizontal: 4.0),
-              decoration: BoxDecoration(
-                color: currentPage == i ? arrowColor : Colors.grey[300],
-                borderRadius: BorderRadius.circular(5.0),
-              ),
+          Container(
+            padding: EdgeInsets.all(
+                constraints.maxWidth > 1200 ? 10.0 : (isWebLayout ? 8.0 : 6.0)),
+            margin: EdgeInsets.symmetric(
+                horizontal: constraints.maxWidth > 1200 ? 6.0 : (isWebLayout ? 4.0 : 3.0)),
+            decoration: BoxDecoration(
+              color: currentPage == i ? arrowColor : Colors.grey[300],
+              borderRadius: BorderRadius.circular(5.0),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                ),
+              ],
+            ),
+            child: GestureDetector(
+              onTap: () {
+                setState(() => currentPage = i);
+                fetchbakeries(page: currentPage);
+              },
               child: Text(
                 '$i',
                 style: TextStyle(
+                  fontSize: constraints.maxWidth > 1200
+                      ? 18
+                      : (isWebLayout ? 16 : 14),
                   color: currentPage == i ? Colors.white : Colors.black,
                   fontWeight: FontWeight.bold,
                 ),
@@ -563,11 +574,20 @@ class _PageFindBaheryState extends State<PageFindBahery> {
 
     pageLinks.add(
       Container(
-        padding: const EdgeInsets.all(8.0),
-        margin: const EdgeInsets.symmetric(horizontal: 4.0),
+        padding: EdgeInsets.all(
+            constraints.maxWidth > 1200 ? 10.0 : (isWebLayout ? 8.0 : 6.0)),
+        margin: EdgeInsets.symmetric(
+            horizontal: constraints.maxWidth > 1200 ? 6.0 : (isWebLayout ? 4.0 : 3.0)),
         decoration: BoxDecoration(
           color: nextPageUrl != null ? arrowColor : disabledArrowColor,
           borderRadius: BorderRadius.circular(5.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+            ),
+          ],
         ),
         child: GestureDetector(
           onTap: nextPageUrl != null
@@ -576,36 +596,40 @@ class _PageFindBaheryState extends State<PageFindBahery> {
                   fetchbakeries(page: currentPage);
                 }
               : null,
-          child: const Icon(Icons.arrow_right, color: Colors.black),
+          child: Icon(Icons.arrow_right,
+              size: constraints.maxWidth > 1200
+                  ? 28
+                  : (isWebLayout ? 24 : 20),
+              color: Colors.black),
         ),
       ),
     );
 
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-            mainAxisAlignment: MainAxisAlignment.center, children: pageLinks),
+    return Center(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: pageLinks,
       ),
     );
   }
 
-  Widget _buildFormSearch() {
+  Widget _buildFormSearch(BoxConstraints constraints) {
     return Container(
+      margin: EdgeInsets.symmetric(horizontal: constraints.maxWidth * 0.03),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10.0),
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              spreadRadius: 2,
-              blurRadius: 5,
-              offset: const Offset(0, 3))
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: EdgeInsets.all(isWebLayout ? 12.0 : 8.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -614,44 +638,51 @@ class _PageFindBaheryState extends State<PageFindBahery> {
               onChanged: _onSearchChanged,
               decoration: InputDecoration(
                 labelText: AppLocalizations.of(context)!.searchbakery,
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: Icon(Icons.search,
+                    size: constraints.maxWidth > 1200
+                        ? 28
+                        : (isWebLayout ? 24 : 20),
+                    color: Colors.black),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10.0)),
+                labelStyle: TextStyle(
+                    fontSize: constraints.maxWidth > 1200
+                        ? 18
+                        : (isWebLayout ? 16 : 14)),
               ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: isWebLayout ? 10 : 8),
             LayoutBuilder(
-              builder: (context, constraints) {
-                bool isSmallScreen = constraints.maxWidth < 600;
+              builder: (context, innerConstraints) {
+                bool isSmallScreen = innerConstraints.maxWidth < 600;
                 return isSmallScreen
                     ? Column(
                         children: [
                           _buildDropdown(subAdministrativeArea, (value) {
                             setState(() => subAdministrativeArea = value!);
                             fetchbakeries();
-                          }, constraints),
-                          const SizedBox(height: 10),
+                          }, innerConstraints),
+                          SizedBox(height: isWebLayout ? 10 : 8),
                           _buildDropdown(administrativeArea, (value) {
                             setState(() => administrativeArea = value!);
                             fetchbakeries();
-                          }, constraints),
+                          }, innerConstraints),
                         ],
                       )
                     : Row(
                         children: [
                           Expanded(
-                            child:
-                                _buildDropdown(subAdministrativeArea, (value) {
+                            child: _buildDropdown(subAdministrativeArea, (value) {
                               setState(() => subAdministrativeArea = value!);
                               fetchbakeries();
-                            }, constraints),
+                            }, innerConstraints),
                           ),
-                          const SizedBox(width: 10),
+                          SizedBox(width: isWebLayout ? 10 : 8),
                           Expanded(
                             child: _buildDropdown(administrativeArea, (value) {
                               setState(() => administrativeArea = value!);
                               fetchbakeries();
-                            }, constraints),
+                            }, innerConstraints),
                           ),
                         ],
                       );
@@ -672,28 +703,45 @@ class _PageFindBaheryState extends State<PageFindBahery> {
         if (value != null)
           DropdownMenuItem(value: value, child: Text(value))
         else
-          const DropdownMenuItem(
-              value: 'Loading...', child: Text('Loading...')),
+          DropdownMenuItem(
+              value: 'Loading...',
+              child: Text('Loading...',
+                  style: TextStyle(
+                      fontSize: constraints.maxWidth > 1200
+                          ? 16
+                          : (isWebLayout ? 14 : 12)))),
       ],
       decoration: InputDecoration(
         filled: true,
         fillColor: Colors.grey[400],
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(30.0)),
+        contentPadding: EdgeInsets.symmetric(
+            horizontal: isWebLayout ? 12 : 8, vertical: isWebLayout ? 8 : 6),
+        labelStyle: TextStyle(
+            fontSize: constraints.maxWidth > 1200
+                ? 16
+                : (isWebLayout ? 14 : 12)),
       ),
+      style: TextStyle(
+          fontSize: constraints.maxWidth > 1200
+              ? 16
+              : (isWebLayout ? 14 : 12)),
     );
   }
 
-  Widget _buildContbakeries() {
+  Widget _buildContbakeries(BoxConstraints constraints) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      margin: EdgeInsets.symmetric(horizontal: constraints.maxWidth * 0.03),
+      padding: EdgeInsets.all(isWebLayout ? 16.0 : 12.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.withOpacity(0.3),
-              spreadRadius: 2,
-              blurRadius: 5)
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+          ),
         ],
       ),
       child: Row(
@@ -702,19 +750,114 @@ class _PageFindBaheryState extends State<PageFindBahery> {
           Flexible(
             child: Text(
               AppLocalizations.of(context)!.total_bakeries,
-              style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: constraints.maxWidth > 1200
+                    ? 18
+                    : (isWebLayout ? 16 : 14),
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: isWebLayout ? 10 : 8),
           Text(
             total.toString(),
-            style: const TextStyle(
-                color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: constraints.maxWidth > 1200
+                  ? 26
+                  : (isWebLayout ? 24 : 20),
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget buildFromMobile() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return ListView(
+          padding: EdgeInsets.symmetric(vertical: constraints.maxHeight * 0.01),
+          children: [
+            _buildContbakeries(constraints),
+            SizedBox(height: constraints.maxHeight * 0.012),
+            _buildFormSearch(constraints),
+            SizedBox(height: constraints.maxHeight * 0.012),
+            _buildbakeryList(constraints),
+            SizedBox(height: constraints.maxHeight * 0.02),
+            _buildPagination(constraints),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget buildFromWeb() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return ListView(
+          padding: EdgeInsets.symmetric(vertical: constraints.maxHeight * 0.01),
+          children: [
+            _buildContbakeries(constraints),
+            SizedBox(height: constraints.maxHeight * 0.015),
+            _buildFormSearch(constraints),
+            SizedBox(height: constraints.maxHeight * 0.015),
+            _buildbakeryList(constraints),
+            SizedBox(height: constraints.maxHeight * 0.02),
+            _buildPagination(constraints),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    isWebLayout = MediaQuery.of(context).size.width >= 600;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          AppLocalizations.of(context)!.bakeryManagement,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: const Color(0xFFFB8C00),
+        iconTheme: const IconThemeData(color: Colors.white),
+    
+      ),
+      drawer: CustomDraweruser(),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: isBigLoading
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(color: Color(0xFFFB8C00)),
+                    SizedBox(height: isWebLayout ? 20 : 16),
+                    Text(
+                      AppLocalizations.of(context)!.loadingMessage,
+                      style: TextStyle(
+                          fontSize: isWebLayout ? 16 : 14),
+                    ),
+                  ],
+                ),
+              )
+            : LayoutBuilder(
+                builder: (context, constraints) {
+                  return isWebLayout ? buildFromWeb() : buildFromMobile();
+                },
+              ),
       ),
     );
   }

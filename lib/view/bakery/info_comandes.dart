@@ -1,11 +1,10 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Commande.dart';
 import 'package:flutter_application/classes/Product.dart';
-import 'package:flutter_application/classes/ScrollingText.dart';
 import 'package:flutter_application/classes/traductions.dart';
+import 'package:flutter_application/custom_widgets/CustomDrawer_caissier.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
 import 'package:flutter_application/custom_widgets/customSnackbar.dart';
 import 'package:flutter_application/services/emloyees/EmloyeesProductService.dart';
@@ -39,6 +38,7 @@ class _InfoComandesState extends State<InfoComandes> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
   String _selectedEtap = 'all'; // 'all', 'pay', 'unpay'
+    String role = '';
 
   @override
   void initState() {
@@ -54,6 +54,7 @@ class _InfoComandesState extends State<InfoComandes> {
       bakeryId = prefs.getString('role') == 'manager'
           ? prefs.getString('my_bakery')
           : prefs.getString('bakery_id');
+      role = prefs.getString('role') ?? '';
 
       await fetchCommandes();
       deliveryFee = await BakeryService().getdeliveryFee(context);
@@ -73,13 +74,11 @@ class _InfoComandesState extends State<InfoComandes> {
       bakeryId = prefs.getString('role') == 'manager'
           ? prefs.getString('my_bakery')
           : prefs.getString('bakery_id');
-      // Map frontend etap to backend values
       String? etapParam;
       if (etap == 'pay')
         etapParam = '1';
       else if (etap == 'unpay') etapParam = '0';
 
-      // Construire l'URL avec les paramètres
       final Map<String, String> params = {
         'bakeryId': bakeryId ?? '',
         if (etapParam != null) 'etap': etapParam,
@@ -163,6 +162,10 @@ class _InfoComandesState extends State<InfoComandes> {
     }
   }
 
+  Future<bool> _onBackPressed() async {
+    return true;
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -172,10 +175,18 @@ class _InfoComandesState extends State<InfoComandes> {
 
   @override
   Widget build(BuildContext context) {
+    bool isWebLayout = MediaQuery.of(context).size.width >= 600;
+
     return Scaffold(
       appBar: _buildAppBar(),
-      drawer: const CustomDrawerManager(),
-      body: isBigLoading ? _buildLoadingScreen() : _buildMainContent(),
+            drawer: role == 'manager'
+          ? const CustomDrawerManager()
+          : const CustomDrawerCaissier(),
+      body: isBigLoading
+          ? _buildLoadingScreen()
+          : isWebLayout
+              ? buildFromWeb(context)
+              : buildFromMobile(context),
     );
   }
 
@@ -184,11 +195,13 @@ class _InfoComandesState extends State<InfoComandes> {
       title: Text(
         AppLocalizations.of(context)!.order_consultation,
         style: TextStyle(
-          color: Colors.black,
+          color: Colors.white,
           fontWeight: FontWeight.bold,
           fontSize: MediaQuery.of(context).size.width < 600 ? 18 : 20,
         ),
       ),
+      backgroundColor: const Color(0xFFFB8C00),
+      iconTheme: const IconThemeData(color: Colors.white),
     );
   }
 
@@ -205,23 +218,103 @@ class _InfoComandesState extends State<InfoComandes> {
     );
   }
 
-  Widget _buildMainContent() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Container(
-          color: const Color(0xFFE5E7EB),
-          child: Column(
-            children: [
-              _buildCountRow(),
-              _buildInput(),
-              _buildDateInput(),
-              const SizedBox(height: 8),
-              _buildInputButtonRadio(),
-              Expanded(child: _buildCommandeList(constraints)),
-            ],
+  Widget buildFromMobile(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: _buildCountRow(),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: _buildInput(),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: _buildDateInput(),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: _buildInputButtonRadio(),
+            ),
+            const SizedBox(height: 8),
+            _buildCommandeList(BoxConstraints(maxWidth: MediaQuery.of(context).size.width)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildFromWeb(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: _buildCountRow(),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: _buildInput(),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: _buildDateInput(),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: _buildInputButtonRadio(),
+                  ),
+                ],
+              ),
+            ),
           ),
-        );
-      },
+          Expanded(
+            flex: 3,
+            child: SingleChildScrollView(
+              child: _buildCommandeList(BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.6)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -356,7 +449,7 @@ class _InfoComandesState extends State<InfoComandes> {
 
   Widget _buildInputButtonRadio() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isSmallScreen = constraints.maxWidth < 600;
@@ -400,15 +493,19 @@ class _InfoComandesState extends State<InfoComandes> {
 
   Widget _buildCommandeList(BoxConstraints constraints) {
     if (Commandes.isEmpty) {
-      return SizedBox(
-        height: constraints.maxHeight,
-        child: Center(
-          child: Text(
-            AppLocalizations.of(context)!.nocommandesFound,
-            style: const TextStyle(
-              fontSize: 18,
-              color: Colors.black,
-              fontWeight: FontWeight.bold,
+      return Card(
+        elevation: 6,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: SizedBox(
+          height: constraints.maxHeight,
+          child: Center(
+            child: Text(
+              AppLocalizations.of(context)!.nocommandesFound,
+              style: const TextStyle(
+                fontSize: 18,
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -416,45 +513,43 @@ class _InfoComandesState extends State<InfoComandes> {
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
       child: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFB8C00)))
           : ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: Commandes.length,
-              itemBuilder: (context, index) =>
-                  _buildCommandeCard(Commandes[index], index, constraints),
+              itemBuilder: (context, index) => Card(
+                elevation: 6,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                child: _buildCommandeCard(Commandes[index], index, constraints),
+              ),
             ),
     );
   }
 
   Widget _buildCommandeCard(
       Commande commande, int index, BoxConstraints constraints) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      elevation: 5,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildCommandeHeader(commande),
-            const SizedBox(height: 8),
-            _buildCommandeInfo(commande),
-            const SizedBox(height: 8),
-            _buildDeliveryModel(context, commande.deliveryMode),
-            const SizedBox(height: 8),
-            _buildConfirmationButton(context, commande),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildCommandeHeader(commande),
+          const SizedBox(height: 8),
+          _buildCommandeInfo(commande),
+          const SizedBox(height: 8),
+          _buildDeliveryModel(context, commande.deliveryMode),
+          const SizedBox(height: 8),
+          _buildConfirmationButton(context, commande),
+          const SizedBox(height: 12),
+          _buildExpandButton(index),
+          if (_expanded[index]) ...[
             const SizedBox(height: 12),
-            _buildExpandButton(index),
-            if (_expanded[index]) ...[
-              const SizedBox(height: 12),
-              _buildDetailsSection(commande),
-            ],
+            _buildDetailsSection(commande),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -471,22 +566,18 @@ class _InfoComandesState extends State<InfoComandes> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              ScrollingWidgetList(
-                children:[ Text(
-                  '${AppLocalizations.of(context)!.order_creation} ${commande.createdAt.toString().substring(0, 16)}   ',
-                  style: const TextStyle(fontSize: 14, color: Colors.grey),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),]
+              Text(
+                '${AppLocalizations.of(context)!.order_creation} ${commande.createdAt.toString().substring(0, 16)}',
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
               const SizedBox(height: 4),
-              ScrollingWidgetList(
-                children:[ Text(
-                  '${AppLocalizations.of(context)!.order_receipt} ${commande.receptionDate.toString().substring(0, 10)} ${commande.receptionTime.toString().substring(0, 5)}   ',
-                  style: const TextStyle(fontSize: 14, color: Colors.grey),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),]
+              Text(
+                '${AppLocalizations.of(context)!.order_receipt} ${commande.receptionDate.toString().substring(0, 10)} ${commande.receptionTime.toString().substring(0, 5)}',
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ],
           ),
@@ -515,34 +606,38 @@ class _InfoComandesState extends State<InfoComandes> {
                 color: Colors.orange[100],
                 borderRadius: BorderRadius.circular(30),
               ),
-              child: Text(Traductions().getEtapCommande(commande.etap,context),
-                  style: const TextStyle(
-                      color: Colors.black, fontWeight: FontWeight.bold)),
+              child: Text(
+                Traductions().getEtapCommande(commande.etap, context),
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
             Container(
-              
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  
-                  borderRadius: BorderRadius.circular(30),
+              padding: const EdgeInsets.all(8),
+              child: ElevatedButton(
+                onPressed: () {
+                  _showModal(commande);
+                },
+                child: Text(
+                  commande.payment_status == 1
+                      ? AppLocalizations.of(context)!.paid
+                      : AppLocalizations.of(context)!.notPaid,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                child: ElevatedButton(
-                    onPressed: () {
-                      _showModal(commande);
-                    },
-                    child: Text(
-                      commande.payment_status == 1 ? AppLocalizations.of(context)!.paid : AppLocalizations.of(context)!.notPaid,
-                      style: const TextStyle(
-                          color: Colors.black, fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: commande.payment_status == 1
-                          ? Colors.green
-                          : Colors.red,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ))),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      commande.payment_status == 1 ? Colors.green : Colors.red,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ],
@@ -564,6 +659,14 @@ class _InfoComandesState extends State<InfoComandes> {
         decoration: BoxDecoration(
           color: const Color(0xFF2563EB).withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -589,25 +692,39 @@ class _InfoComandesState extends State<InfoComandes> {
 
   Widget _buildDeliveryModel(BuildContext context, String deliveryMode) {
     final isDelivery = deliveryMode == 'delivery';
-    return Row(
-      children: [
-        FaIcon(
-          isDelivery ? FontAwesomeIcons.truck : FontAwesomeIcons.store,
-          color: isDelivery ? const Color(0xFF2563EB) : const Color(0xFF16A34A),
-        ),
-        const SizedBox(width: 5),
-        Text(
-          isDelivery
-              ? AppLocalizations.of(context)!.delivery
-              : AppLocalizations.of(context)!.pickup,
-          style: TextStyle(
-            fontSize: 16,
-            color:
-                isDelivery ? const Color(0xFF2563EB) : const Color(0xFF16A34A),
-            fontWeight: FontWeight.bold,
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: Offset(0, 2),
           ),
-        ),
-      ],
+        ],
+        color: Colors.white,
+      ),
+      child: Row(
+        children: [
+          FaIcon(
+            isDelivery ? FontAwesomeIcons.truck : FontAwesomeIcons.store,
+            color: isDelivery ? const Color(0xFF2563EB) : const Color(0xFF16A34A),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            isDelivery
+                ? AppLocalizations.of(context)!.delivery
+                : AppLocalizations.of(context)!.pickup,
+            style: TextStyle(
+              fontSize: 16,
+              color: isDelivery ? const Color(0xFF2563EB) : const Color(0xFF16A34A),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -616,11 +733,9 @@ class _InfoComandesState extends State<InfoComandes> {
       future: _fetchProductDetails(commande.listDeIdProduct),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator(color: Color(0xFFFB8C00)));
         }
-        if (snapshot.hasError ||
-            !snapshot.hasData ||
-            (snapshot.data?.isEmpty ?? true)) {
+        if (snapshot.hasError || !snapshot.hasData || (snapshot.data?.isEmpty ?? true)) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
@@ -679,8 +794,8 @@ class _InfoComandesState extends State<InfoComandes> {
                   Flexible(
                     child: Text(
                       commande.selected_price == 'gros'
-                          ? '${product.name}: $quantity x ${product.wholesalePrice.toStringAsFixed(2)} = ${itemTotal.toStringAsFixed(2)}'
-                          : '${product.name}: $quantity x ${product.price.toStringAsFixed(2)} = ${itemTotal.toStringAsFixed(2)}',
+                          ? '${product.name}: $quantity x ${product.wholesalePrice.toStringAsFixed(3)} = ${itemTotal.toStringAsFixed(3)}'
+                          : '${product.name}: $quantity x ${product.price.toStringAsFixed(3)} = ${itemTotal.toStringAsFixed(3)}',
                       textAlign: TextAlign.right,
                     ),
                   ),
@@ -695,8 +810,8 @@ class _InfoComandesState extends State<InfoComandes> {
                   Flexible(
                     child: Text(
                       commande.selected_price == 'gros'
-                          ? '${product.name}: $quantity x ${product.wholesalePrice.toStringAsFixed(2)} = ${itemTotal.toStringAsFixed(2)}'
-                          :'${product.name}: $quantity x ${product.price.toStringAsFixed(2)} = ${itemTotal.toStringAsFixed(2)}',
+                          ? '${product.name}: $quantity x ${product.wholesalePrice.toStringAsFixed(3)} = ${itemTotal.toStringAsFixed(3)}'
+                          : '${product.name}: $quantity x ${product.price.toStringAsFixed(3)} = ${itemTotal.toStringAsFixed(3)}',
                       textAlign: TextAlign.right,
                     ),
                   ),
@@ -708,58 +823,65 @@ class _InfoComandesState extends State<InfoComandes> {
 
         if (commande.deliveryMode == 'delivery') total += deliveryFee;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildContactInfo(
-              icon: FontAwesomeIcons.phone,
-              label: AppLocalizations.of(context)!.phone,
-              value: commande.primaryPhone,
-              onTap: () => _launchPhoneCall(commande.primaryPhone),
-            ),
-            if (commande.secondaryPhone != null) ...[
-              const SizedBox(height: 8),
-              _buildContactInfo(
-                icon: FontAwesomeIcons.phone,
-                label: AppLocalizations.of(context)!.secondaryPhone,
-                value: commande.secondaryPhone!,
-                onTap: () => _launchPhoneCall(commande.secondaryPhone!),
-              ),
-            ],
-            const SizedBox(height: 8),
-            _buildContactInfo(
-              icon: FontAwesomeIcons.mapMarkerAlt,
-              label: AppLocalizations.of(context)!.address,
-              value: commande.primaryAddress,
-            ),
-            if (commande.secondaryAddress != null) ...[
-              const SizedBox(height: 8),
-              _buildContactInfo(
-                icon: FontAwesomeIcons.mapMarkerAlt,
-                label: AppLocalizations.of(context)!.secondaryAddress,
-                value: commande.secondaryAddress!,
-              ),
-            ],
-            const SizedBox(height: 12),
-            Column(
+        return Card(
+          elevation: 6,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: productItems,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  AppLocalizations.of(context)!.total,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                _buildContactInfo(
+                  icon: FontAwesomeIcons.phone,
+                  label: AppLocalizations.of(context)!.phone,
+                  value: commande.primaryPhone,
+                  onTap: () => _launchPhoneCall(commande.primaryPhone),
                 ),
-                Text(
-                  '${total.toStringAsFixed(2)}${commande.deliveryMode == 'delivery' ? ' (${AppLocalizations.of(context)!.deliveryFee}: ${deliveryFee.toStringAsFixed(2)})' : ''}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                if (commande.secondaryPhone != null) ...[
+                  const SizedBox(height: 8),
+                  _buildContactInfo(
+                    icon: FontAwesomeIcons.phone,
+                    label: AppLocalizations.of(context)!.secondaryPhone,
+                    value: commande.secondaryPhone!,
+                    onTap: () => _launchPhoneCall(commande.secondaryPhone!),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                _buildContactInfo(
+                  icon: FontAwesomeIcons.mapMarkerAlt,
+                  label: AppLocalizations.of(context)!.address,
+                  value: commande.primaryAddress,
+                ),
+                if (commande.secondaryAddress != null) ...[
+                  const SizedBox(height: 8),
+                  _buildContactInfo(
+                    icon: FontAwesomeIcons.mapMarkerAlt,
+                    label: AppLocalizations.of(context)!.secondaryAddress,
+                    value: commande.secondaryAddress!,
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: productItems,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.total,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '${total.toStringAsFixed(3)}${commande.deliveryMode == 'delivery' ? ' (${AppLocalizations.of(context)!.deliveryFee}: ${deliveryFee.toStringAsFixed(3)})' : ''}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -771,31 +893,46 @@ class _InfoComandesState extends State<InfoComandes> {
     required String value,
     VoidCallback? onTap,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        FaIcon(icon, size: 16, color: Colors.black),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            GestureDetector(
-              onTap: onTap,
-              child: Text(
-                value,
-                style: TextStyle(
-                  color: onTap != null ? const Color(0xFF2563EB) : Colors.black,
-                  decoration: onTap != null ? TextDecoration.underline : null,
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: Offset(0, 2),
+          ),
+        ],
+        color: Colors.white,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FaIcon(icon, size: 16, color: Colors.black),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              GestureDetector(
+                onTap: onTap,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    color: onTap != null ? const Color(0xFF2563EB) : Colors.black,
+                    decoration: onTap != null ? TextDecoration.underline : null,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -812,62 +949,76 @@ class _InfoComandesState extends State<InfoComandes> {
   }
 
   Widget _buildConfirmationButton(BuildContext context, Commande commande) {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+    return Card(
+      elevation: 6,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () async {
+                  await InvoiceService().printInvoiceFromCommandeId(
+                    context: context,
+                    commandeId: commande.id,
+                  );
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const FaIcon(FontAwesomeIcons.check,
+                        size: 16, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Text(
+                      AppLocalizations.of(context)!.print,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
               ),
             ),
-            onPressed: () async {
-              await InvoiceService().printInvoiceFromCommandeId(
-                context: context,
-                commandeId: commande.id,
-              );
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const FaIcon(FontAwesomeIcons.check,
-                    size: 16, color: Colors.white),
-                const SizedBox(width: 8),
-                Text(
-                  AppLocalizations.of(context)!.print,
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ],
-            ),
-          ),
+            const SizedBox(width: 8),
+          ],
         ),
-        const SizedBox(width: 8),
-      ],
+      ),
     );
   }
-      void _showModal(Commande commande) {
+
+  void _showModal(Commande commande) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(commande.payment_status==1? AppLocalizations.of(context)!.invoiceOptions:AppLocalizations.of(context)!.invoiceOptions),
-          content: Text(commande.payment_status==1? AppLocalizations.of(context)!.invoiceOptions:AppLocalizations.of(context)!.invoiceOptions),
+          title: Text(
+              commande.payment_status == 1
+                  ? AppLocalizations.of(context)!.invoiceOptions
+                  : AppLocalizations.of(context)!.invoiceOptions),
+          content: Text(
+              commande.payment_status == 1
+                  ? AppLocalizations.of(context)!.invoiceOptions
+                  : AppLocalizations.of(context)!.invoiceOptions),
           actions: [
             TextButton(
               onPressed: () async {
-                                    await EmployeesCommandeService().updatePaymentStatus(
-                      context,
-                      commande.id,
-                      commande.etap,
-                      commande.payment_status == 0 ? 1 : 0,
-                    );
-               fetchCommandes();
+                await EmployeesCommandeService().updatePaymentStatus(
+                  context,
+                  commande.id,
+                  commande.etap,
+                  commande.payment_status == 0 ? 1 : 0,
+                );
+                fetchCommandes();
                 Navigator.of(context).pop();
               },
               child: Text(AppLocalizations.of(context)!.save),
             ),
-TextButton(
+            TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
               },
@@ -878,5 +1029,4 @@ TextButton(
       },
     );
   }
-
 }

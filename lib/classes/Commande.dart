@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter_application/classes/Bakery.dart';
+
 class Commande {
   final int id;
   final int bakeryId;
@@ -22,8 +24,9 @@ class Commande {
   final DateTime createdAt;
   final DateTime updatedAt;
   final int payment_status;
-  final String selected_price ;
-
+  final String selected_price;
+  final Bakery? bakery;
+  final double? totalCost;
 
   Commande({
     required this.id,
@@ -48,6 +51,8 @@ class Commande {
     required this.updatedAt,
     required this.payment_status,
     required this.selected_price,
+    this.bakery,
+    this.totalCost,
   });
 
   factory Commande.fromJson(Map<String, dynamic> json) {
@@ -99,6 +104,8 @@ class Commande {
       updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? '') ?? DateTime.now(),
       payment_status: json['payment_status'] as int? ?? 0,
       selected_price: json['selected_price'] as String? ?? 'details',
+      bakery: json['bakery'] != null ? Bakery.fromJson(json['bakery']) : null,
+      totalCost: (json['totalCost'] as num?)?.toDouble(),
     );
   }
 
@@ -126,6 +133,8 @@ class Commande {
       'updated_at': updatedAt.toIso8601String(),
       'payment_status': payment_status,
       'selected_price': selected_price,
+      'bakery': bakery?.toJson(),
+      'totalCost': totalCost,
     };
   }
 
@@ -134,6 +143,7 @@ class Commande {
     return 'Commande{id: $id, bakeryId: $bakeryId, userId: $userId, etap: $etap, '
         'paymentMode: $paymentMode, deliveryMode: $deliveryMode, receptionDate: $receptionDate, '
         'primaryAddress: $primaryAddress, secondaryAddress: $secondaryAddress, '
-        'primaryPhone: $primaryPhone, userName: $userName, createdAt: $createdAt, updatedAt: $updatedAt}';
+        'primaryPhone: $primaryPhone, userName: $userName, createdAt: $createdAt, updatedAt: $updatedAt, '
+        'bakery: $bakery, totalCost: $totalCost}';
   }
 }

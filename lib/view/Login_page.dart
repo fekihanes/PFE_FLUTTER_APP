@@ -3,9 +3,10 @@ import 'package:flutter_application/custom_widgets/CustomTextField.dart';
 import 'package:flutter_application/custom_widgets/LanguageSelector.dart';
 import 'package:flutter_application/services/auth_service.dart';
 import 'package:flutter_application/view/admin/home_page_admin.dart';
-import 'package:flutter_application/view/employees/Boulanger/MelangeListPage.dart';
-import 'package:flutter_application/view/manager/Editing_the_bakery_profile.dart';
-import 'package:flutter_application/view/manager/page_management_employees.dart';
+import 'package:flutter_application/view/bakery/Accueil_bakery.dart';
+import 'package:flutter_application/view/employees/Boulanger/CommandeMelangePage.dart';
+import 'package:flutter_application/view/employees/livreur/Livreurpayment_status_page.dart';
+import 'package:flutter_application/view/manager/HomePage.dart';
 import 'package:flutter_application/view/special_customer/special_customerPageAccueilBakery.dart';
 import 'package:flutter_application/view/user/page_find_bahery.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -87,7 +88,7 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-                builder: (context) => const MelangeListPage()));
+                builder: (context) => const CommandeMelangePage()));
         break;
       case 'admin':
         Navigator.pushReplacement(context,
@@ -97,7 +98,19 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-                builder: (context) => const EditingTheBakeryProfile()));
+                builder: (context) => const HomePage()));
+        break;
+      case 'caissier':
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const AccueilBakery(products_selected: {})));
+        break;
+      case 'livreur':
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const LivreurPaymentStatusPage()));
         break;
       case 'user':
         Navigator.pushReplacement(context,
@@ -149,7 +162,7 @@ class _LoginPageState extends State<LoginPage> {
             case 'admin':
               return const HomePageAdmin();
             case 'manager':
-              return const HomePageManager();
+              return const HomePage();
             case 'user':
               return const PageFindBahery();
             default:
@@ -210,7 +223,7 @@ class _LoginPageState extends State<LoginPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          LanguageSelector(),
+          // LanguageSelector(),
           Expanded(
             flex: 5,
             child: _buildImage(context),
@@ -366,7 +379,7 @@ class _LoginPageState extends State<LoginPage> {
     return CustomTextField(
       controller: _nameController,
       labelText: localization.name,
-      icon: Icons.person,
+      icon: Icon(Icons.person),
       validator: (value) => value?.isEmpty ?? true
           ? '${localization.name} ${localization.isRequired}'
           : null,
@@ -377,7 +390,7 @@ class _LoginPageState extends State<LoginPage> {
     return CustomTextField(
       controller: _emailController,
       labelText: localization.email,
-      icon: Icons.email,
+      icon: Icon(Icons.email),
       keyboardType: TextInputType.emailAddress,
       validator: (value) {
         if (value == null || value.isEmpty) return localization.emailRequired;
@@ -393,7 +406,7 @@ class _LoginPageState extends State<LoginPage> {
     return CustomTextField(
       controller: _cinController,
       labelText: localization.cin,
-      icon: Icons.call_to_action_rounded,
+      icon: Icon(Icons.call_to_action_rounded),
       keyboardType: TextInputType.number,
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -414,7 +427,7 @@ class _LoginPageState extends State<LoginPage> {
     return CustomTextField(
       controller: _adresseController,
       labelText: localization.adresse,
-      icon: Icons.location_on,
+      icon: Icon(Icons.location_on),
       keyboardType: TextInputType.streetAddress,
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
@@ -432,7 +445,7 @@ class _LoginPageState extends State<LoginPage> {
     return CustomTextField(
       controller: _passwordController,
       labelText: localization.password,
-      icon: Icons.lock,
+      icon: Icon(Icons.lock),
       obscureText: !_isPasswordVisible,
       suffixIcon: IconButton(
         icon:
@@ -454,7 +467,7 @@ class _LoginPageState extends State<LoginPage> {
     return CustomTextField(
       controller: _passwordConfirmationController,
       labelText: localization.passwordConfirmation,
-      icon: Icons.lock,
+      icon: Icon(Icons.lock),
       obscureText: !_isPasswordConfirmationVisible,
       suffixIcon: IconButton(
         icon: Icon(_isPasswordConfirmationVisible
@@ -479,7 +492,7 @@ class _LoginPageState extends State<LoginPage> {
     return CustomTextField(
       controller: _phoneController,
       labelText: localization.phone,
-      icon: Icons.phone,
+      icon: Icon(Icons.phone),
       keyboardType: TextInputType.phone,
       validator: (value) {
         if (value == null || value.isEmpty) {

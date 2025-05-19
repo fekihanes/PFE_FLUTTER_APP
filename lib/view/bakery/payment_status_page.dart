@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/ApiConfig.dart';
 import 'package:flutter_application/classes/Commande.dart';
 import 'package:flutter_application/classes/Product.dart';
-import 'package:flutter_application/classes/ScrollingText.dart';
 import 'package:flutter_application/classes/traductions.dart';
+import 'package:flutter_application/custom_widgets/CustomDrawer_caissier.dart';
 import 'package:flutter_application/custom_widgets/CustomDrawer_manager.dart';
+import 'package:flutter_application/custom_widgets/NotificationIcon.dart';
 import 'package:flutter_application/custom_widgets/customSnackbar.dart';
 import 'package:flutter_application/services/Bakery/bakery_service.dart';
 import 'package:flutter_application/services/emloyees/CommandeService.dart';
@@ -39,6 +40,7 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
   int countCommandesEnPreparation = 0;
   double deliveryFee = 0.0;
   String? bakeryId;
+  String role = '';
 
   @override
   void initState() {
@@ -51,6 +53,7 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
     setState(() => isBigLoading = true);
     try {
       final prefs = await SharedPreferences.getInstance();
+      role = prefs.getString('role') ?? '';
       bakeryId = prefs.getString('role') == 'manager'
           ? prefs.getString('my_bakery')
           : prefs.getString('bakery_id');
@@ -131,12 +134,24 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
     }
   }
 
+  Future<bool> _onBackPressed() async {
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
+    bool isWebLayout = MediaQuery.of(context).size.width >= 600;
+
     return Scaffold(
       appBar: _buildAppBar(),
-      drawer: const CustomDrawerManager(),
-      body: isBigLoading ? _buildLoadingScreen() : _buildMainContent(),
+      drawer: role == 'manager'
+          ? const CustomDrawerManager()
+          : const CustomDrawerCaissier(),
+      body: isBigLoading
+          ? _buildLoadingScreen()
+          : isWebLayout
+              ? buildFromWeb(context)
+              : buildFromMobile(context),
     );
   }
 
@@ -145,19 +160,22 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
       title: Text(
         AppLocalizations.of(context)!.paymentstatus,
         style: TextStyle(
-          color: Colors.black,
+          color: Colors.white,
           fontWeight: FontWeight.bold,
           fontSize: MediaQuery.of(context).size.width < 600 ? 18 : 20,
         ),
       ),
+      backgroundColor: const Color(0xFFFB8C00),
+      iconTheme: const IconThemeData(color: Colors.white),
       actions: [
         IconButton(
-          icon: const Icon(Icons.compare_arrows, color: Colors.black),
+          icon: const Icon(Icons.compare_arrows, color: Colors.white),
           onPressed: () => Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const InfoComandes()),
           ),
         ),
+        const NotificationIcon(),
       ],
     );
   }
@@ -175,19 +193,63 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
     );
   }
 
-  Widget _buildMainContent() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Container(
-          color: const Color(0xFFE5E7EB),
-          child: Column(
-            children: [
-              _buildCountRow(),
-              Expanded(child: _buildCommandeList(constraints)),
-            ],
+  Widget buildFromMobile(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: _buildCountRow(),
+            ),
+            const SizedBox(height: 8),
+            _buildCommandeList(BoxConstraints(maxWidth: MediaQuery.of(context).size.width)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget buildFromWeb(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3F4F6), Color(0xFFFFE0B2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Card(
+                elevation: 6,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: _buildCountRow(),
+              ),
+            ),
           ),
-        );
-      },
+          Expanded(
+            flex: 3,
+            child: SingleChildScrollView(
+              child: _buildCommandeList(BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.6)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -197,8 +259,7 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isSmallScreen = constraints.maxWidth < 600;
-          final crossAxisCount =
-              isSmallScreen ? 2 : 4;
+          final crossAxisCount = isSmallScreen ? 2 : 4;
 
           return Wrap(
             spacing: 8.0,
@@ -269,7 +330,7 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
             label,
             style: TextStyle(
               fontSize: isSmallScreen ? 12 : 14,
-            color: Colors.grey,
+              color: Colors.grey,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -290,15 +351,19 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
 
   Widget _buildCommandeList(BoxConstraints constraints) {
     if (Commandes.isEmpty) {
-      return SizedBox(
-        height: constraints.maxHeight,
-        child: Center(
-          child: Text(
-            AppLocalizations.of(context)!.nocommandesFound,
-            style: const TextStyle(
-              fontSize: 18,
-              color: Colors.black,
-              fontWeight: FontWeight.bold,
+      return Card(
+        elevation: 6,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: SizedBox(
+          height: constraints.maxHeight,
+          child: Center(
+            child: Text(
+              AppLocalizations.of(context)!.nocommandesFound,
+              style: const TextStyle(
+                fontSize: 18,
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -306,45 +371,43 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
       child: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFB8C00)))
           : ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: Commandes.length,
-              itemBuilder: (context, index) =>
-                  _buildCommandeCard(Commandes[index], index, constraints),
+              itemBuilder: (context, index) => Card(
+                elevation: 6,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                child: _buildCommandeCard(Commandes[index], index, constraints),
+              ),
             ),
     );
   }
 
   Widget _buildCommandeCard(
       Commande commande, int index, BoxConstraints constraints) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      elevation: 5,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildCommandeHeader(commande),
-            const SizedBox(height: 8),
-            _buildCommandeInfo(commande),
-            const SizedBox(height: 8),
-            _buildDeliveryModel(context, commande.deliveryMode),
-            const SizedBox(height: 8),
-            _buildConfirmationButton(context, commande),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildCommandeHeader(commande),
+          const SizedBox(height: 8),
+          _buildCommandeInfo(commande),
+          const SizedBox(height: 8),
+          _buildDeliveryModel(context, commande.deliveryMode),
+          const SizedBox(height: 8),
+          _buildConfirmationButton(context, commande),
+          const SizedBox(height: 12),
+          _buildExpandButton(index),
+          if (_expanded[index]) ...[
             const SizedBox(height: 12),
-            _buildExpandButton(index),
-            if (_expanded[index]) ...[
-              const SizedBox(height: 12),
-              _buildDetailsSection(commande),
-            ],
+            _buildDetailsSection(commande),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -361,22 +424,18 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              ScrollingWidgetList(
-                children:[ Text(
-                  '${AppLocalizations.of(context)!.order_creation} ${commande.createdAt.toString().substring(0, 16)}   ',
-                  style: const TextStyle(fontSize: 14, color: Colors.grey),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),]
+              Text(
+                '${AppLocalizations.of(context)!.order_creation} ${commande.createdAt.toString().substring(0, 16)}',
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
               const SizedBox(height: 4),
-              ScrollingWidgetList(
-                children:[ Text(
-                  '${AppLocalizations.of(context)!.order_receipt} ${commande.receptionDate.toString().substring(0, 10)} ${commande.receptionTime.toString().substring(0, 5)}   ',
-                  style: const TextStyle(fontSize: 14, color: Colors.grey),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),]
+              Text(
+                '${AppLocalizations.of(context)!.order_receipt} ${commande.receptionDate.toString().substring(0, 10)} ${commande.receptionTime.toString().substring(0, 5)}',
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ],
           ),
@@ -402,9 +461,17 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
           decoration: BoxDecoration(
             color: Colors.orange[100],
             borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
           child: Text(
-            Traductions().getEtapCommande(commande.etap,context),
+            Traductions().getEtapCommande(commande.etap, context),
             style: const TextStyle(color: Colors.black),
           ),
         ),
@@ -427,6 +494,14 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
         decoration: BoxDecoration(
           color: const Color(0xFF2563EB).withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -472,22 +547,37 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
         label = AppLocalizations.of(context)!.pickup;
     }
 
-    return Row(
-      children: [
-        FaIcon(
-          icon,
-          color: color,
-        ),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 16,
-            color: color,
-            fontWeight: FontWeight.bold,
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: Offset(0, 2),
           ),
-        ),
-      ],
+        ],
+      ),
+      child: Row(
+        children: [
+          FaIcon(
+            icon,
+            color: color,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -496,11 +586,9 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
       future: _fetchProductDetails(commande.listDeIdProduct),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator(color: Color(0xFFFB8C00)));
         }
-        if (snapshot.hasError ||
-            !snapshot.hasData ||
-            (snapshot.data?.isEmpty ?? true)) {
+        if (snapshot.hasError || !snapshot.hasData || (snapshot.data?.isEmpty ?? true)) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
@@ -535,8 +623,7 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
               description: null,
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),
-                            primaryMaterials: [],
-
+              primaryMaterials: [],
             ),
           );
           double itemTotal = product.price * quantity;
@@ -560,8 +647,8 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
                   Flexible(
                     child: Text(
                       commande.selected_price == 'gros'
-                          ? '${product.name}: $quantity x ${product.wholesalePrice.toStringAsFixed(2)} = ${itemTotal.toStringAsFixed(2)}'
-                          : '${product.name}: $quantity x ${product.price.toStringAsFixed(2)} = ${itemTotal.toStringAsFixed(2)}',
+                          ? '${product.name}: $quantity x ${product.wholesalePrice.toStringAsFixed(3)} = ${itemTotal.toStringAsFixed(3)}'
+                          : '${product.name}: $quantity x ${product.price.toStringAsFixed(3)} = ${itemTotal.toStringAsFixed(3)}',
                       textAlign: TextAlign.right,
                     ),
                   ),
@@ -576,8 +663,8 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
                   Flexible(
                     child: Text(
                       commande.selected_price == 'gros'
-                          ? '${product.name}: $quantity x ${product.wholesalePrice.toStringAsFixed(2)} = ${itemTotal.toStringAsFixed(2)}'
-                          : '${product.name}: $quantity x ${product.price.toStringAsFixed(2)} = ${itemTotal.toStringAsFixed(2)}',
+                          ? '${product.name}: $quantity x ${product.wholesalePrice.toStringAsFixed(3)} = ${itemTotal.toStringAsFixed(3)}'
+                          : '${product.name}: $quantity x ${product.price.toStringAsFixed(3)} = ${itemTotal.toStringAsFixed(3)}',
                       textAlign: TextAlign.right,
                     ),
                   ),
@@ -589,58 +676,65 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
 
         if (commande.deliveryMode == 'delivery') total += deliveryFee;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildContactInfo(
-              icon: FontAwesomeIcons.phone,
-              label: AppLocalizations.of(context)!.phone,
-              value: commande.primaryPhone,
-              onTap: () => _launchPhoneCall(commande.primaryPhone),
-            ),
-            if (commande.secondaryPhone != null) ...[
-              const SizedBox(height: 8),
-              _buildContactInfo(
-                icon: FontAwesomeIcons.phone,
-                label: AppLocalizations.of(context)!.secondaryPhone,
-                value: commande.secondaryPhone!,
-                onTap: () => _launchPhoneCall(commande.secondaryPhone!),
-              ),
-            ],
-            const SizedBox(height: 8),
-            _buildContactInfo(
-              icon: FontAwesomeIcons.mapMarkerAlt,
-              label: AppLocalizations.of(context)!.address,
-              value: commande.primaryAddress,
-            ),
-            if (commande.secondaryAddress != null) ...[
-              const SizedBox(height: 8),
-              _buildContactInfo(
-                icon: FontAwesomeIcons.mapMarkerAlt,
-                label: AppLocalizations.of(context)!.secondaryAddress,
-                value: commande.secondaryAddress!,
-              ),
-            ],
-            const SizedBox(height: 12),
-            Column(
+        return Card(
+          elevation: 6,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: productItems,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  AppLocalizations.of(context)!.total,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                _buildContactInfo(
+                  icon: FontAwesomeIcons.phone,
+                  label: AppLocalizations.of(context)!.phone,
+                  value: commande.primaryPhone,
+                  onTap: () => _launchPhoneCall(commande.primaryPhone),
                 ),
-                Text(
-                  '${total.toStringAsFixed(2)}${commande.deliveryMode == 'delivery' ? ' (${AppLocalizations.of(context)!.deliveryFee}: ${deliveryFee.toStringAsFixed(2)})' : ''}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                if (commande.secondaryPhone != null) ...[
+                  const SizedBox(height: 8),
+                  _buildContactInfo(
+                    icon: FontAwesomeIcons.phone,
+                    label: AppLocalizations.of(context)!.secondaryPhone,
+                    value: commande.secondaryPhone!,
+                    onTap: () => _launchPhoneCall(commande.secondaryPhone!),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                _buildContactInfo(
+                  icon: FontAwesomeIcons.mapMarkerAlt,
+                  label: AppLocalizations.of(context)!.address,
+                  value: commande.primaryAddress,
+                ),
+                if (commande.secondaryAddress != null) ...[
+                  const SizedBox(height: 8),
+                  _buildContactInfo(
+                    icon: FontAwesomeIcons.mapMarkerAlt,
+                    label: AppLocalizations.of(context)!.secondaryAddress,
+                    value: commande.secondaryAddress!,
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: productItems,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.total,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '${total.toStringAsFixed(3)}${commande.deliveryMode == 'delivery' ? ' (${AppLocalizations.of(context)!.deliveryFee}: ${deliveryFee.toStringAsFixed(3)})' : ''}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -652,34 +746,48 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
     required String value,
     VoidCallback? onTap,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        FaIcon(icon, size: 16, color: Colors.black),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            GestureDetector(
-              onTap: onTap,
-              child: Text(
-                value,
-                style: TextStyle(
-                  color: onTap != null ? const Color(0xFF2563EB) : Colors.black,
-                  decoration: onTap != null ? TextDecoration.underline : null,
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FaIcon(icon, size: 16, color: Colors.black),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              GestureDetector(
+                onTap: onTap,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    color: onTap != null ? const Color(0xFF2563EB) : Colors.black,
+                    decoration: onTap != null ? TextDecoration.underline : null,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ],
+            ],
+          ),
+        ],
+      ),
     );
   }
-
   void _launchPhoneCall(String phoneNumber) async {
     final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
     if (await canLaunchUrl(phoneUri)) {
@@ -772,8 +880,7 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
                           description: null,
                           createdAt: DateTime.now(),
                           updatedAt: DateTime.now(),
-                                        primaryMaterials: [],
-
+                          primaryMaterials: [],
                         ),
                       );
                       products_selected[product] = quantity;
@@ -845,60 +952,67 @@ class _PaymentStatusPageState extends State<PaymentStatusPage> {
   }
 
   Widget _buildConfirmationButton(BuildContext context, Commande commande) {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () {
-              _showConfirmationDialog(context, commande, true);
-            },
-            child: ScrollingWidgetList(
-                children: [
-                  const SizedBox(width: 8),
-                  const Icon(FontAwesomeIcons.check,
-                      size: 16, color: Colors.white),
-                  Text(
-                    AppLocalizations.of(context)!.confirm,
-                    style: const TextStyle(color: Colors.white),
+    return Card(
+      elevation: 6,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ],
-              ),
-            
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () {
-              _showConfirmationDialog(context, commande, false);
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(FontAwesomeIcons.times,
-                    size: 16, color: Colors.white),
-                const SizedBox(width: 8),
-                Text(
-                  AppLocalizations.of(context)!.cancel,
-                  style: const TextStyle(color: Colors.white),
                 ),
-              ],
+                onPressed: () {
+                  _showConfirmationDialog(context, commande, true);
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(FontAwesomeIcons.check,
+                        size: 16, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Text(
+                      AppLocalizations.of(context)!.confirm,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () {
+                  _showConfirmationDialog(context, commande, false);
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(FontAwesomeIcons.times,
+                        size: 16, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Text(
+                      AppLocalizations.of(context)!.cancel,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

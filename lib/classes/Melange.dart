@@ -35,11 +35,15 @@ class Melange {
 
 class MelangeWork {
   final String time;
+   String? etap;
+
   final List<int> productIds;
   final List<int> quantities;
 
+
   MelangeWork({
     required this.time,
+     this.etap,
     required this.productIds,
     required this.quantities,
   });
@@ -47,6 +51,7 @@ class MelangeWork {
   factory MelangeWork.fromJson(Map<String, dynamic> json) {
     return MelangeWork(
       time: json['time'],
+      etap: json['etap'] ?? '',
       productIds: List<int>.from(json['product_ids']),
       quantities: List<int>.from(json['quantities']),
     );
@@ -57,6 +62,6 @@ class MelangeWork {
       'time': time,
       'product_ids': productIds,
       'quantities': quantities,
-    };
+         };
   }
 }

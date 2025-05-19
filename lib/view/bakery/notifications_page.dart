@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application/classes/AppNotification.dart';
 import 'package:flutter_application/classes/Product.dart';
-import 'package:flutter_application/classes/ScrollingText.dart';
 import 'package:flutter_application/custom_widgets/customSnackbar.dart';
 import 'package:flutter_application/services/Bakery/bakery_service.dart';
 import 'package:flutter_application/services/Notification/NotificationService.dart';
-import 'package:flutter_application/services/emloyees/EmloyeesProductService.dart';
 import 'package:flutter_application/services/emloyees/CommandeService.dart';
+import 'package:flutter_application/services/emloyees/EmloyeesProductService.dart';
+
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class NotificationsPage extends StatefulWidget {
@@ -28,8 +29,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
   String? prevPageUrl;
   String? nextPageUrl;
   List<bool> _expanded = [];
-  Map<int, List<Product>> _productCache = {};
-   double deliveryFee = 0;
+  Map<String, List<Product>> _productCache = {};
+  double deliveryFee = 0.0;
+  int countCommandesTerminee = 0;
+  int countCommandesAnnulees = 0;
+  int countCommandesEnAttente = 0;
 
   @override
   void initState() {
@@ -37,11 +41,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
     _initializeData();
   }
 
-  void _initializeData() async {
+  Future<void> _initializeData() async {
     if (!mounted) return;
     setState(() => isBigLoading = true);
     try {
-      await fetchNotifications();
+      await Future.wait([
+        fetchNotifications(),
+        _fetchCommandCounts(),
+      ]);
+    } catch (e) {
+      if (mounted) {
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.errorInitializingData);
+      }
     } finally {
       if (mounted) setState(() => isBigLoading = false);
     }
@@ -49,42 +61,87 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   Future<void> fetchNotifications({int page = 1}) async {
     setState(() => isLoading = true);
-    final response =
-        await NotificationService().getUnreadNotifications(context, page);
-          deliveryFee = await BakeryService().getdeliveryFee(context);
-    setState(() {
-      isLoading = false;
-      if (response != null) {
-        notifications = response.data;
-        currentPage = response.currentPage;
-        lastPage = response.lastPage;
-        total = response.total;
-        prevPageUrl = response.prevPageUrl;
-        nextPageUrl = response.nextPageUrl;
-        _expanded = List<bool>.filled(notifications.length, false);
-      } else {
-        notifications = [];
-        currentPage = 1;
-        lastPage = 1;
-        total = 0;
-        prevPageUrl = null;
-        nextPageUrl = null;
-        _expanded = [];
+    try {
+      final response =
+          await NotificationService().getUnreadNotifications(context, page);
+      final fee = await BakeryService().getdeliveryFee(context);
+      setState(() {
+        isLoading = false;
+        if (response != null) {
+          notifications = response.data;
+          currentPage = response.currentPage;
+          lastPage = response.lastPage;
+          total = response.total;
+          prevPageUrl = response.prevPageUrl;
+          nextPageUrl = response.nextPageUrl;
+          _expanded = List<bool>.filled(notifications.length, false);
+          deliveryFee = fee ?? 0.0;
+        } else {
+          notifications = [];
+          currentPage = 1;
+          lastPage = 1;
+          total = 0;
+          prevPageUrl = null;
+          nextPageUrl = null;
+          _expanded = [];
+          deliveryFee = 0.0;
+        }
+      });
+    } catch (e) {
+      setState(() => isLoading = false);
+      Customsnackbar().showErrorSnackbar(
+          context, AppLocalizations.of(context)!.errorFetchingNotifications);
+    }
+  }
+
+
+  Future<void> _fetchCommandCounts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final SbakeryId = prefs.getString('my_bakery')==''?
+          prefs.getString('bakery_id') : prefs.getString('my_bakery');
+      final bakeryId = SbakeryId != null ? int.tryParse(SbakeryId) : null;
+      if (bakeryId == null) {
+        Customsnackbar().showErrorSnackbar(
+            context, AppLocalizations.of(context)!.bakeryIdNotFound);
+        return;
       }
-    });
+
+      final counts = await EmployeesCommandeService().getCommandCounts(
+        context,
+        bakeryId: bakeryId,
+        receptionDate: DateTime.now().toIso8601String().split('T').first,
+      );
+
+      setState(() {
+        countCommandesTerminee = counts['count_commandes_terminee'] ?? 0;
+        countCommandesAnnulees = counts['count_commandes_annulees'] ?? 0;
+        countCommandesEnAttente = counts['count_commandes_en_attente'] ?? 0;
+      });
+    } catch (e) {
+      setState(() {
+        countCommandesTerminee = 0;
+        countCommandesAnnulees = 0;
+        countCommandesEnAttente = 0;
+      });
+      Customsnackbar().showErrorSnackbar(
+          context, AppLocalizations.of(context)!.errorFetchingCounts);
+    }
   }
 
   Future<List<Product>> _fetchProductDetails(List<int> productIds) async {
-    final cacheKey = productIds.hashCode;
+    final cacheKey = productIds.join(',');
     if (_productCache.containsKey(cacheKey)) {
       return _productCache[cacheKey]!;
     }
     try {
-      final products =
-          await EmloyeesProductService().fetchProductsByIds(context, productIds);
-      _productCache[cacheKey] = products;
-      return products;
+      final products = await EmloyeesProductService()
+          .fetchProductsByIds(context, productIds);
+      _productCache[cacheKey] = products ?? [];
+      return products ?? [];
     } catch (e) {
+      Customsnackbar().showErrorSnackbar(
+          context, AppLocalizations.of(context)!.errorLoadingProducts);
       return [];
     }
   }
@@ -101,11 +158,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
             fontSize: MediaQuery.of(context).size.width < 600 ? 18 : 20,
           ),
         ),
-         leading: IconButton(
+        leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: ()  => {
-             NotificationService().getNotificationCount2(),
-            Navigator.pop(context)
+          onPressed: () {
+            NotificationService().getNotificationCount2();
+            Navigator.pop(context);
           },
         ),
       ),
@@ -126,6 +183,32 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   color: const Color(0xFFE5E7EB),
                   child: Column(
                     children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildCountContainer(
+                              label:
+                                  AppLocalizations.of(context)!.completedOrders,
+                              count: countCommandesTerminee,
+                              color: Colors.green,
+                            ),
+                            _buildCountContainer(
+                              label:
+                                  AppLocalizations.of(context)!.canceledOrders,
+                              count: countCommandesAnnulees,
+                              color: Colors.red,
+                            ),
+                            _buildCountContainer(
+                              label:
+                                  AppLocalizations.of(context)!.pendingOrders,
+                              count: countCommandesEnAttente,
+                              color: Colors.orange,
+                            ),
+                          ],
+                        ),
+                      ),
                       Expanded(
                         child: SingleChildScrollView(
                           padding: const EdgeInsets.all(32),
@@ -138,6 +221,54 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 );
               },
             ),
+    );
+  }
+
+  Widget _buildCountContainer({
+    required String label,
+    required int count,
+    required Color color,
+  }) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 5,
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Wrap(children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ]),
+            const SizedBox(height: 8),
+            Text(
+              count.toString(),
+              style: TextStyle(
+                color: color,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -276,7 +407,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      notification.data.userName,
+                      notification.data.userName ?? 'Unknown User',
                       style: const TextStyle(
                         fontSize: 16,
                         color: Colors.black,
@@ -290,7 +421,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         borderRadius: BorderRadius.circular(30),
                       ),
                       child: Text(
-                        notification.data.etap,
+                        notification.data.etap ?? 'Unknown',
                         style: const TextStyle(color: Colors.black),
                       ),
                     ),
@@ -305,8 +436,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     setState(() {
                       _expanded[index] = !_expanded[index];
                       if (_expanded[index]) {
-                        _fetchProductDetails(notification
-                            .data.listDeIdProduct); // Pre-fetch on expand
+                        _fetchProductDetails(notification.data.listDeIdProduct);
                       }
                     });
                   },
@@ -351,7 +481,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 
-  Widget _buildDeliveryModel(BuildContext context, String deliveryMode) {
+  Widget _buildDeliveryModel(BuildContext context, String? deliveryMode) {
     final isDelivery = deliveryMode == 'delivery';
     return Row(
       children: [
@@ -376,8 +506,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Widget _buildDetailsSection(AppNotification notification) {
-    
-
     return FutureBuilder<List<Product>>(
       future: _fetchProductDetails(notification.data.listDeIdProduct),
       builder: (context, snapshot) {
@@ -408,7 +536,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             orElse: () => Product(
               id: productId,
               bakeryId: 0,
-              name: 'Unknown',
+              name: 'unknown Product',
               price: 0.0,
               wholesalePrice: 0.0,
               type: '',
@@ -419,23 +547,25 @@ class _NotificationsPageState extends State<NotificationsPage> {
               description: null,
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),
-                            primaryMaterials: [],
-
+              primaryMaterials: [],
             ),
           );
           final itemTotal = product.price * quantity;
           total += itemTotal;
 
-          // For the first item, include the "Products" label on the left
-          if (i == 0) {
-            productItems.add(
-              Row(
+          productItems.add(
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    AppLocalizations.of(context)!.products,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  if (i == 0)
+                    Text(
+                      AppLocalizations.of(context)!.products,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    )
+                  else
+                    const SizedBox(),
                   Flexible(
                     child: Text(
                       '${product.name}: $quantity x ${product.price.toStringAsFixed(2)} = ${itemTotal.toStringAsFixed(2)}',
@@ -444,22 +574,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   ),
                 ],
               ),
-            );
-          } else {
-            productItems.add(
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Flexible(
-                    child: Text(
-                      '${product.name}: $quantity x ${product.price.toStringAsFixed(2)} = ${itemTotal.toStringAsFixed(2)}',
-                      textAlign: TextAlign.right,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
+            ),
+          );
         }
 
         if (notification.data.deliveryMode == 'delivery') total += deliveryFee;
@@ -470,8 +586,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
             _buildContactInfo(
               icon: FontAwesomeIcons.phone,
               label: AppLocalizations.of(context)!.phone,
-              value: notification.data.primaryPhone,
-              onTap: () => _launchPhoneCall(notification.data.primaryPhone),
+              value: notification.data.primaryPhone ?? 'N/A',
+              onTap: notification.data.primaryPhone != null
+                  ? () => _launchPhoneCall(notification.data.primaryPhone!)
+                  : null,
             ),
             if (notification.data.secondaryPhone != null) ...[
               const SizedBox(height: 8),
@@ -487,7 +605,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             _buildContactInfo(
               icon: FontAwesomeIcons.mapMarkerAlt,
               label: AppLocalizations.of(context)!.address,
-              value: notification.data.primaryAddress,
+              value: notification.data.primaryAddress ?? 'N/A',
             ),
             if (notification.data.secondaryAddress != null) ...[
               const SizedBox(height: 8),
@@ -511,7 +629,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  '${total.toStringAsFixed(2)}${notification.data.deliveryMode == 'delivery' ? ' (${AppLocalizations.of(context)!.deliveryFee}: $deliveryFee)' : ''}',
+                  '${total.toStringAsFixed(2)} ${notification.data.deliveryMode == 'delivery' ? '(${AppLocalizations.of(context)!.deliveryFee}: ${deliveryFee.toStringAsFixed(2)})' : ''}',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
@@ -533,30 +651,33 @@ class _NotificationsPageState extends State<NotificationsPage> {
       children: [
         FaIcon(icon, size: 16, color: Colors.black),
         const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            GestureDetector(
-              onTap: onTap,
-              child: Text(
-                value,
-                style: TextStyle(
-                  color: onTap != null ? const Color(0xFF2563EB) : Colors.black,
-                  decoration: onTap != null ? TextDecoration.underline : null,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              GestureDetector(
+                onTap: onTap,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    color:
+                        onTap != null ? const Color(0xFF2563EB) : Colors.black,
+                    decoration: onTap != null ? TextDecoration.underline : null,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
   }
 
-  void _launchPhoneCall(String phoneNumber) async {
+  Future<void> _launchPhoneCall(String phoneNumber) async {
     final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
     if (await canLaunchUrl(phoneUri)) {
       await launchUrl(phoneUri);
@@ -568,6 +689,17 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   Widget _buildConfirmationButton(
       BuildContext context, AppNotification notification) {
+    if (notification.commandeId == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Text(
+          AppLocalizations.of(context)!.noCommandeId,
+          style:
+              const TextStyle(color: Colors.red, fontStyle: FontStyle.italic),
+        ),
+      );
+    }
+
     return Row(
       children: [
         Expanded(
@@ -587,15 +719,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 id: notification.commandeId!,
               );
             },
-            child:ScrollingWidgetList(       children: [
-                const SizedBox(width: 8),
-                Text(
-                  AppLocalizations.of(context)!.confirm,
-                  style: const TextStyle(color: Colors.white),
-                ),
+            child: 
+                Row(
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.confirm,
+                      style: TextStyle(color: Colors.white),
+                    ),
                 const Icon(FontAwesomeIcons.check,
                     size: 16, color: Colors.white),
-              ],) 
+                  ],
+                ),
+            
+            
           ),
         ),
         const SizedBox(width: 8),
@@ -634,66 +770,72 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 
-// Helper method to show confirmation dialog
   void _showConfirmationDialog({
-  required BuildContext context,
-  required String title,
-  required String message,
-  required String etap,
-  required String id,
-}) {
-  TextEditingController inputController = TextEditingController(); // Contrôleur pour le champ de saisie
+    required BuildContext context,
+    required String title,
+    required String message,
+    required String etap,
+    required String id,
+  }) {
+    final inputController = TextEditingController();
 
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text(
-          title,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 16), // Espacement
-            TextField(
-              controller: inputController,
-              decoration: InputDecoration(
-                labelText: "Entrez une valeur (optionnel)",
-                border: OutlineInputBorder(),
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(message, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              TextField(
+                controller: inputController,
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.optionalInput,
+                  border: const OutlineInputBorder(),
+                ),
               ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(AppLocalizations.of(context)!.no),
+            ),
+            TextButton(
+              onPressed: () async {
+                final inputValue = inputController.text.isNotEmpty
+                    ? inputController.text
+                    : null;
+
+                try {
+                  await EmployeesCommandeService().update_etap_commande(
+                    context,
+                    id,
+                    etap,
+                    inputValue,
+                  );
+                  await Future.wait([
+                    fetchNotifications(page: currentPage),
+                    _fetchCommandCounts(),
+                  ]);
+                } catch (e) {
+                  Customsnackbar().showErrorSnackbar(context,
+                      AppLocalizations.of(context)!.errorUpdatingCommand);
+                } finally {
+                  if (mounted) Navigator.of(context).pop();
+                }
+              },
+              child: Text(AppLocalizations.of(context)!.yes),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // Fermer la boîte de dialogue
-            },
-            child: Text(AppLocalizations.of(context)!.no),
-          ),
-          TextButton(
-            onPressed: () async {
-              String? inputValue =
-                  inputController.text.isNotEmpty ? inputController.text : null;
-
-              await EmployeesCommandeService().update_etap_commande(
-                context,
-                id,
-                etap,
-                inputValue, // Utilisation de la valeur saisie ou null
-              );
-
-              await fetchNotifications(page: currentPage);
-              Navigator.of(context).pop(); // Fermer la boîte de dialogue après l'action
-            },
-            child: Text(AppLocalizations.of(context)!.yes),
-          ),
-        ],
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 }
